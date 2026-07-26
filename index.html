@@ -94,6 +94,27 @@
       catch (error) { return inicial; }
     }
 
+    function mostrarMensaje(texto) {
+      const mensaje = document.getElementById("mensaje");
+      mensaje.textContent = texto;
+      mensaje.classList.remove("d-none");
+    }
+
+    function guardarAccesoAlumnoOffline(ci, curso, nombre) {
+      const accesos = leerJSON("alumnosAccesoOffline", {});
+      accesos[String(ci)] = { curso, nombre, clave: String(ci) };
+      localStorage.setItem("alumnosAccesoOffline", JSON.stringify(accesos));
+    }
+
+    function ingresarAlumno(curso, nombre) {
+      sessionStorage.setItem("sesionRol", "alumno");
+      sessionStorage.setItem("sesionAlumno", "activa");
+      sessionStorage.setItem("alumnoCurso", curso);
+      sessionStorage.setItem("alumnoNombre", nombre);
+      localStorage.setItem("cursoSeleccionado", curso);
+      window.location.href = `alumno.html?curso=${encodeURIComponent(curso)}&alumno=${encodeURIComponent(nombre)}`;
+    }
+
     if (sessionStorage.getItem("sesionRol") === "admin") {
       window.location.href = "admin.html";
     } else if (sessionStorage.getItem("sesionRol") === "director") {
@@ -164,12 +185,8 @@
         for (const nombre of Object.keys(alumnosCI[curso])) {
           const ci = String(alumnosCI[curso][nombre]);
           if (usuario === ci && clave === ci && (alumnos[curso] || []).includes(nombre)) {
-            sessionStorage.setItem("sesionRol", "alumno");
-            sessionStorage.setItem("sesionAlumno", "activa");
-            sessionStorage.setItem("alumnoCurso", curso);
-            sessionStorage.setItem("alumnoNombre", nombre);
-            localStorage.setItem("cursoSeleccionado", curso);
-            window.location.href = `alumno.html?curso=${encodeURIComponent(curso)}&alumno=${encodeURIComponent(nombre)}`;
+            guardarAccesoAlumnoOffline(ci, curso, nombre);
+            ingresarAlumno(curso, nombre);
             return;
           }
         }
@@ -178,18 +195,26 @@
       for (const curso of Object.keys(alumnos)) {
         const encontrado = (alumnos[curso] || []).find(nombre => usuario === clave && usuario === String(nombre).trim());
         if (encontrado) {
-          sessionStorage.setItem("sesionRol", "alumno");
-          sessionStorage.setItem("sesionAlumno", "activa");
-          sessionStorage.setItem("alumnoCurso", curso);
-          sessionStorage.setItem("alumnoNombre", encontrado);
-          window.location.href = `alumno.html?curso=${encodeURIComponent(curso)}&alumno=${encodeURIComponent(encontrado)}`;
+          guardarAccesoAlumnoOffline(usuario, curso, encontrado);
+          ingresarAlumno(curso, encontrado);
           return;
         }
       }
 
-      document.getElementById("mensaje").classList.remove("d-none");
+      const accesosOffline = leerJSON("alumnosAccesoOffline", {});
+      const acceso = accesosOffline[usuario];
+      if (acceso && clave === acceso.clave) {
+        ingresarAlumno(acceso.curso, acceso.nombre);
+        return;
+      }
+
+      if (!navigator.onLine) {
+        mostrarMensaje("Sin internet. Este alumno debe ingresar una vez con internet en este dispositivo.");
+        return;
+      }
+
+      mostrarMensaje("Usuario o contraseña incorrectos.");
     });
   </script>
 </body>
 </html>
-//fen
