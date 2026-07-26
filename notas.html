@@ -1,0 +1,1010 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background:#eef5f9; padding:18px; font-family:"Segoe UI", Arial, sans-serif; color:#213547; }
+    h2 { margin:0; text-align:center; }
+    .topbar, .work-panel { background:#fff; border:1px solid #dbe7ef; border-radius:10px; box-shadow:0 6px 18px rgba(30,60,90,.08); }
+    .topbar { padding:14px; margin-bottom:14px; }
+    .app-navbar { background:#12355b; border-radius:0; box-shadow:0 6px 16px rgba(0,0,0,.14); display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; margin:0 calc(50% - 50vw) 18px; min-height:58px; padding:10px 24px; width:100vw; }
+    .app-navbar a, .app-navbar button { align-items:center; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:8px; color:#fff; display:inline-flex; gap:7px; font-weight:800; min-height:38px; padding:8px 14px; text-decoration:none; }
+    .app-navbar .active { background:#fff; color:#12355b; }
+    .nav-spacer { flex:1 1 auto; }
+    .user-nav { background:rgba(255,255,255,.18)!important; border-color:rgba(255,255,255,.38)!important; cursor:pointer; }
+    .user-nav small { display:block; font-size:10px; font-weight:700; line-height:1; opacity:.85; }
+    .docente-navbar { justify-content:flex-start; align-items:center; }
+    .docente-navbar .nav-visible { display:flex; flex:1 1 auto; flex-wrap:wrap; gap:8px; align-items:center; }
+    .docente-navbar .nav-menu { flex-basis:100%; gap:8px; padding-top:8px; }
+    .docente-navbar .nav-menu.show,
+    .docente-navbar .nav-menu.collapsing { display:flex!important; flex-wrap:wrap; }
+    .nav-priority { font-size:15px; padding-inline:18px!important; }
+    .nav-toggler { margin-left:auto; background:#fff!important; color:#12355b!important; border-color:#fff!important; min-width:46px; justify-content:center; }
+    .nav-logout { background:#dc3545!important; border-color:#ffb3bd!important; color:#fff!important; }
+    .nav-logout:hover { background:#bb2d3b!important; }
+    .docente-sidebar { color:#213547; }
+    .docente-sidebar .offcanvas-header { background:#12355b; color:#fff; }
+    .docente-sidebar .btn-close { filter:invert(1) grayscale(1); opacity:.9; }
+    .sidebar-eyebrow { font-size:11px; font-weight:900; opacity:.75; text-transform:uppercase; }
+    .sidebar-actions { display:grid; gap:10px; }
+    .sidebar-actions a,
+    .sidebar-actions button { align-items:center; background:#f8fafc!important; border:1px solid #dbe7ef!important; border-radius:8px; color:#12355b!important; display:flex; font-weight:900; gap:10px; justify-content:flex-start; min-height:48px; padding:10px 14px; text-decoration:none; width:100%; }
+    .sidebar-actions a.active,
+    .sidebar-actions button.active { background:#12355b!important; border-color:#12355b!important; color:#fff!important; }
+    .sidebar-actions .user-nav { background:#eef5ff!important; border-color:#bfd4ea!important; }
+    .sidebar-actions .nav-logout { background:#dc3545!important; border-color:#dc3545!important; color:#fff!important; margin-top:8px; }
+    .sidebar-actions .nav-logout:hover { background:#bb2d3b!important; }
+    .director-navbar { align-items:center; justify-content:flex-start; }
+    .director-brand { align-items:center; color:#fff; display:inline-flex; font-weight:900; gap:8px; letter-spacing:.3px; }
+    .director-menu-btn { background:#fff!important; border-color:#fff!important; color:#12355b!important; justify-content:center; margin-left:auto; min-width:46px; }
+    .director-sidebar { background:#12355b; color:#fff; max-width:96px; }
+    .director-sidebar .offcanvas-header { border-bottom:1px solid rgba(255,255,255,.18); justify-content:center; padding:12px 8px; }
+    .director-sidebar .btn-close { filter:invert(1) grayscale(1); opacity:.9; }
+    .director-icon-nav { display:grid; gap:12px; justify-items:center; }
+    .director-icon-nav a,
+    .director-icon-nav button { align-items:center; background:rgba(255,255,255,.12)!important; border:1px solid rgba(255,255,255,.25)!important; border-radius:14px; color:#fff!important; display:inline-flex; font-size:23px; height:54px; justify-content:center; padding:0!important; width:54px; }
+    .director-icon-nav .active { background:#fff!important; color:#12355b!important; }
+    .director-icon-nav .director-logout { background:#dc3545!important; border-color:#ffb3bd!important; margin-top:6px; }
+    .course-btn { border:2px solid #d6e1eb; border-radius:10px; background:#fff; color:#213547; font-weight:800; min-width:150px; padding:12px 16px; transition:.15s; }
+    .course-btn.active { border-width:4px; color:#fff; transform:scale(1.06); box-shadow:0 10px 20px rgba(0,0,0,.18); }
+    .term-group .btn { font-weight:700; }
+    .materia-tabs .nav-link.active { font-weight:800; }
+    .table-wrap { max-height:74vh; overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; }
+    table { font-size:12px; white-space:nowrap; margin-bottom:0!important; }
+    th,td { text-align:center; vertical-align:middle; }
+    thead th { position:sticky; top:0; z-index:2; }
+    .vertical { height:140px; min-width:38px; padding:4px; transform:rotate(180deg); writing-mode:vertical-rl; }
+    .alumno { position:sticky; left:0; z-index:4; background:#fff!important; font-weight:800; text-align:left; min-width:230px; }
+    .student-link { color:#12355b; font-weight:900; text-decoration:none; }
+    .student-link:hover { color:#0d6efd; text-decoration:underline; }
+    .student-row td { border-top-width:4px!important; }
+    .student-row.c1 td { border-top-color:#0d6efd!important; }
+    .student-row.c2 td { border-top-color:#dc3545!important; }
+    .student-row.c3 td { border-top-color:#198754!important; }
+    .student-row.c4 td { border-top-color:#6f42c1!important; }
+    .student-row.c5 td { border-top-color:#fd7e14!important; }
+    .student-row.c6 td { border-top-color:#20c997!important; }
+    .student-row.c7 td { border-top-color:#d63384!important; }
+    .student-row.c8 td { border-top-color:#0dcaf0!important; }
+    .gH { background:#198754!important; color:#fff!important; }
+    .gS { background:#dc3545!important; color:#fff!important; }
+    .gR { background:#6f42c1!important; color:#fff!important; }
+    .gA { background:#fd7e14!important; color:#fff!important; }
+    .gF { background:#12355b!important; color:#fff!important; }
+    .rojo { background:#f8d7da!important; color:#842029; font-weight:800; }
+    .verde { background:#d1e7dd!important; color:#0f5132; font-weight:800; }
+    .final-cell { color:#fff!important; font-size:15px; font-weight:900; }
+    .final-ok { background:#198754!important; }
+    .final-bad { background:#dc3545!important; }
+    .weighted { background:#e8f0fe!important; color:#12355b; font-weight:900; }
+    .nota-btn { width:42px; height:38px; margin:2px; border:0; border-radius:6px; background:#eef2f6; }
+    .nota-btn:hover { background:#0d6efd; color:#fff; }
+    .nota-btn.sel { background:#198754; color:#fff; }
+    .score-btn { min-width:56px; font-weight:800; }
+    .config-btn { border:0; background:transparent; color:inherit; font-weight:800; padding:0; text-decoration:underline; }
+    .hidden { display:none!important; }
+    .print-actions { margin-top:12px; text-align:center; }
+    #areaImpresion { display:none; }
+    @media print {
+      body > *:not(#areaImpresion) { display:none!important; }
+      #areaImpresion { display:block!important; color:#000; font-family:Arial, sans-serif; }
+      #areaImpresion h1 { font-size:20px; margin:0 0 8px; text-align:center; }
+      #areaImpresion .meta { border:1px solid #000; margin:10px 0; padding:8px; }
+      #areaImpresion table { width:100%; border-collapse:collapse; font-size:10px; }
+      #areaImpresion th,
+      #areaImpresion td { border:1px solid #000; color:#000!important; padding:4px; text-align:center; vertical-align:middle; }
+      #areaImpresion th:first-child,
+      #areaImpresion td:first-child { font-weight:bold; text-align:left; }
+      #areaImpresion th.vertical-print { height:120px; min-width:28px; padding:3px; transform:rotate(180deg); writing-mode:vertical-rl; }
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-sync.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#12355b">
+  <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
+  <link rel="apple-touch-icon" href="images/icon-180.png">
+  <script defer src="pwa.js"></script>
+</head>
+<body>
+  <script>
+    if (sessionStorage.getItem("sesionDocente") !== "activa") {
+      window.location.href = "index.html";
+    }
+  </script>
+  <main class="container-fluid">
+    <nav class="app-navbar" id="appNavbar"></nav>
+
+    <section class="topbar">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <h2 class="flex-grow-1">Notas de Alumnos</h2>
+      </div>
+
+      <div id="cursoSelector" class="d-flex flex-wrap justify-content-center gap-2 mb-3"></div>
+
+      <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
+        <div class="btn-group term-group" role="group" aria-label="Trimestre">
+          <input type="radio" class="btn-check" name="trimestre" id="tri1" value="1er Trimestre" autocomplete="off">
+          <label class="btn btn-outline-primary" for="tri1">1er Trimestre</label>
+          <input type="radio" class="btn-check" name="trimestre" id="tri2" value="2do Trimestre" autocomplete="off">
+          <label class="btn btn-outline-primary" for="tri2">2do Trimestre</label>
+          <input type="radio" class="btn-check" name="trimestre" id="tri3" value="3er Trimestre" autocomplete="off">
+          <label class="btn btn-outline-primary" for="tri3">3er Trimestre</label>
+          <input type="radio" class="btn-check" name="trimestre" id="triFinal" value="Promedio Final" autocomplete="off">
+          <label class="btn btn-outline-dark" for="triFinal">Promedio final</label>
+        </div>
+      </div>
+    </section>
+
+    <ul id="tabsMaterias" class="nav nav-tabs materia-tabs mb-3"></ul>
+    <div id="contenido"></div>
+    <div class="print-actions">
+      <button class="btn btn-outline-dark" onclick="imprimirNotas()">Imprimir notas</button>
+    </div>
+  </main>
+
+  <div id="areaImpresion"></div>
+
+  <div class="modal fade" id="modalNota" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tituloModalNota">Calificar</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="fw-bold mb-2" id="detalleModalNota"></p>
+          <div id="botonesNota"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalConfigNota" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tituloConfigNota">Configurar nota</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label for="configTitulo" class="form-label fw-bold">Titulo</label>
+          <input id="configTitulo" class="form-control mb-3">
+          <label for="configMax" class="form-label fw-bold">Nota maxima</label>
+          <input id="configMax" class="form-control" type="number" min="1" max="100">
+          <button id="btnEliminarConfig" class="btn btn-outline-danger mt-3 hidden" onclick="eliminarConfigNota()">Eliminar</button>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarConfigNota()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const TRIS = ["1er Trimestre", "2do Trimestre", "3er Trimestre"];
+    const cursoSelector = document.getElementById("cursoSelector");
+    const tabsMaterias = document.getElementById("tabsMaterias");
+    const contenido = document.getElementById("contenido");
+    const modalNota = new bootstrap.Modal(document.getElementById("modalNota"));
+    const modalConfigNota = new bootstrap.Modal(document.getElementById("modalConfigNota"));
+
+    let cursoActual = "";
+    let materiaActual = "";
+    let vistaActual = localStorage.getItem("trimestreActual") || "1er Trimestre";
+    let modalContexto = null;
+    let configContexto = null;
+
+    function leerJSON(clave, inicial = {}) {
+      try { return JSON.parse(localStorage.getItem(clave) || JSON.stringify(inicial)); }
+      catch (error) { return inicial; }
+    }
+
+    function guardarJSON(clave, valor) {
+      localStorage.setItem(clave, JSON.stringify(valor));
+      if (window.firebaseMarkPackage) window.firebaseMarkPackage(clave);
+    }
+
+    function escapar(valor) {
+      return String(valor)
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function escaparAtributo(valor) { return String(valor).replaceAll("\\","\\\\").replaceAll("'","\\'").replaceAll('"',"&quot;"); }
+
+    function urlAlumno(alumno) {
+      const params = new URLSearchParams({
+        curso: cursoActual,
+        alumno,
+        trimestre: vistaActual
+      });
+      return `alumno.html?${params.toString()}`;
+    }
+
+    function notaEntera(valor) {
+      const n = Math.round(Number(valor || 0));
+      return Math.max(35, Math.min(100, n));
+    }
+
+    function convertirRango(valor, maximo) {
+      const max = Number(maximo || 100);
+      if (!max) return 35;
+      return notaEntera((Number(valor || 0) * 100) / max);
+    }
+
+    function ponderar(nota100, peso) { return Math.round((notaEntera(nota100) * peso) / 100); }
+    function color(n) { return notaEntera(n) > 50 ? "verde" : "rojo"; }
+
+    function normalizarAsignacionesDocente(docente) {
+      if (Array.isArray(docente?.asignaciones) && docente.asignaciones.length) {
+        return docente.asignaciones.map(asig => ({
+          curso: asig.curso,
+          materias: Array.isArray(asig.materias) ? asig.materias : []
+        })).filter(asig => asig.curso && asig.materias.length);
+      }
+      const materias = Array.isArray(docente?.materias) && docente.materias.length
+        ? docente.materias
+        : [docente?.materia].filter(Boolean);
+      return docente?.curso && materias.length ? [{ curso: docente.curso, materias }] : [];
+    }
+
+    function guardarSesionDocenteDesdeCuenta(docente) {
+      const asignaciones = normalizarAsignacionesDocente(docente);
+      const cursos = [...new Set(asignaciones.map(asig => asig.curso).filter(Boolean))];
+      const materias = asignaciones[0]?.materias || [];
+      sessionStorage.setItem("docenteNombre", docente.nombre || sessionStorage.getItem("docenteNombre") || "");
+      sessionStorage.setItem("docenteCurso", cursos[0] || "");
+      sessionStorage.setItem("docenteCursos", JSON.stringify(cursos));
+      sessionStorage.setItem("docenteMateria", materias[0] || "");
+      sessionStorage.setItem("docenteMaterias", JSON.stringify(materias));
+      sessionStorage.setItem("docenteAsignaciones", JSON.stringify(asignaciones));
+      return asignaciones;
+    }
+
+    function obtenerCursos() {
+      const cursos = leerJSON("cursos", []);
+      const alumnos = leerJSON("alumnos");
+      const base = cursos.length ? cursos : Object.keys(alumnos);
+      if (sessionStorage.getItem("sesionRol") === "docente") {
+        const permitidos = cursosDocenteAsignados();
+        const filtrados = base.filter(curso => permitidos.includes(curso));
+        return filtrados.length ? filtrados : permitidos;
+      }
+      return base;
+    }
+
+    function asignacionesDocente() {
+      if (sessionStorage.getItem("sesionRol") !== "docente") return [];
+      const usuario = sessionStorage.getItem("docenteUsuario");
+      const docente = leerJSON("docentes", []).find(item => item.usuario === usuario);
+      if (docente) return guardarSesionDocenteDesdeCuenta(docente);
+      try {
+        const asignaciones = JSON.parse(sessionStorage.getItem("docenteAsignaciones") || "[]");
+        if (Array.isArray(asignaciones) && asignaciones.length) return asignaciones;
+      } catch (error) {}
+      const curso = sessionStorage.getItem("docenteCurso");
+      let materias = [];
+      try { materias = JSON.parse(sessionStorage.getItem("docenteMaterias") || "[]"); }
+      catch (error) { materias = [sessionStorage.getItem("docenteMateria")].filter(Boolean); }
+      return curso ? [{ curso, materias }] : [];
+    }
+
+    function cursosDocenteAsignados() {
+      return [...new Set(asignacionesDocente().map(asig => asig.curso).filter(Boolean))];
+    }
+
+    function materiasDocenteAsignadas(curso = cursoActual) {
+      if (sessionStorage.getItem("sesionRol") !== "docente") return [];
+      return [...new Set(asignacionesDocente()
+        .filter(asig => asig.curso === curso)
+        .flatMap(asig => Array.isArray(asig.materias) ? asig.materias : []))];
+    }
+
+    function irAAsistencias() {
+      const hoy = new Date();
+      window.location.href = `dia.html?anio=${hoy.getFullYear()}&mes=${hoy.getMonth() + 1}&dia=${hoy.getDate()}`;
+    }
+
+    function cerrarSesion() {
+      sessionStorage.clear();
+      window.location.href = "index.html";
+    }
+
+    function docenteNavItem() {
+      if (sessionStorage.getItem("sesionRol") !== "docente") return "";
+      const nombre = escapar(sessionStorage.getItem("docenteNombre") || sessionStorage.getItem("docenteUsuario") || "Docente");
+      return `<button type="button" class="user-nav" ondblclick="abrirCambioClaveDocente()" title="Doble click para cambiar contrasena"><i class="bi bi-person-badge-fill"></i><span><small>Docente</small>${nombre}</span></button>`;
+    }
+
+    function docenteNavbarHTML(activo) {
+      const activoAsistencia = activo === "asistencias" ? "active" : "";
+      const activoHorario = activo === "horario" ? "active" : "";
+      const activoTareas = activo === "tareas" ? "active" : "";
+      return `
+        <div class="nav-visible">
+          <button class="nav-priority ${activoAsistencia}" type="button" onclick="irAAsistencias()"><i class="bi bi-clipboard2-check-fill"></i> ASISTENCIAS</button>
+          <a class="nav-priority ${activoTareas}" id="navTareas" href="mes.html"><i class="bi bi-card-checklist"></i> TAREAS</a>
+          <button class="nav-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#docenteSidebar" aria-controls="docenteSidebar" aria-label="Abrir menu">
+            <i class="bi bi-list"></i>
+          </button>
+        </div>
+        <div class="offcanvas offcanvas-end docente-sidebar" tabindex="-1" id="docenteSidebar" aria-labelledby="docenteSidebarLabel">
+          <div class="offcanvas-header">
+            <div>
+              <div class="sidebar-eyebrow">Menu docente</div>
+              <h5 class="offcanvas-title mb-0" id="docenteSidebarLabel">Opciones</h5>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+          </div>
+          <div class="offcanvas-body">
+            <div class="sidebar-actions">
+              <a class="${activoHorario}" href="horario.html"><i class="bi bi-calendar3-week-fill"></i> HORARIO</a>
+              <a class="active" id="navNotas" href="notas.html"><i class="bi bi-journal-check"></i> NOTAS</a>
+              ${docenteNavItem()}
+              <button class="nav-logout" type="button" onclick="cerrarSesion()" title="Salir"><i class="bi bi-power"></i> SALIR</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function directorNavbarHTML(activo) {
+      const item = (clave, href, icono, titulo) => `<a class="${activo === clave ? "active" : ""}" href="${href}" title="${titulo}" aria-label="${titulo}"><i class="bi ${icono}"></i></a>`;
+      return `
+        <span class="director-brand"><i class="bi bi-eye-fill"></i> DIRECTOR</span>
+        <button class="director-menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#directorSidebar" aria-controls="directorSidebar" aria-label="Abrir menu">
+          <i class="bi bi-list"></i>
+        </button>
+        <div class="offcanvas offcanvas-end director-sidebar" tabindex="-1" id="directorSidebar" aria-labelledby="directorSidebarLabel">
+          <div class="offcanvas-header">
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="director-icon-nav" id="directorSidebarLabel">
+              ${item("asistencias", "dia.html", "bi-clipboard2-check-fill", "Asistencias")}
+              ${item("horario", "horario.html", "bi-calendar3-week-fill", "Horarios")}
+              ${item("notas", "notas.html", "bi-journal-check", "Notas")}
+              ${item("reportes", "reportes.html", "bi-bar-chart-line-fill", "Reportes")}
+              <button class="director-logout" type="button" onclick="cerrarSesion()" title="Salir" aria-label="Salir"><i class="bi bi-power"></i></button>
+            </nav>
+          </div>
+        </div>
+      `;
+    }
+
+    function abrirCambioClaveDocente() {
+      if (!document.getElementById("modalClaveDocente")) {
+        document.body.insertAdjacentHTML("beforeend", `
+          <div class="modal fade" id="modalClaveDocente" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <form onsubmit="guardarCambioClaveDocente(event)">
+                  <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-key-fill"></i> Cambiar contrasena</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <label class="form-label fw-bold" for="claveActualDocente">Contrasena actual</label>
+                    <input id="claveActualDocente" class="form-control mb-2" type="password" required>
+                    <label class="form-label fw-bold" for="claveNuevaDocente">Contrasena nueva</label>
+                    <input id="claveNuevaDocente" class="form-control mb-2" type="password" required>
+                    <label class="form-label fw-bold" for="claveConfirmarDocente">Confirmar contrasena</label>
+                    <input id="claveConfirmarDocente" class="form-control" type="password" required>
+                    <div id="mensajeClaveDocente" class="alert alert-danger py-2 mt-3 d-none"></div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary fw-bold" type="submit">Guardar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+      document.getElementById("claveActualDocente").value = "";
+      document.getElementById("claveNuevaDocente").value = "";
+      document.getElementById("claveConfirmarDocente").value = "";
+      document.getElementById("mensajeClaveDocente").classList.add("d-none");
+      new bootstrap.Modal(document.getElementById("modalClaveDocente")).show();
+    }
+
+    function guardarCambioClaveDocente(event) {
+      event.preventDefault();
+      const actual = document.getElementById("claveActualDocente").value;
+      const nueva = document.getElementById("claveNuevaDocente").value;
+      const confirmar = document.getElementById("claveConfirmarDocente").value;
+      const mensaje = document.getElementById("mensajeClaveDocente");
+      const usuario = sessionStorage.getItem("docenteUsuario");
+      const docentes = leerJSON("docentes", []);
+      const docente = docentes.find(item => item.usuario === usuario);
+
+      function error(texto) {
+        mensaje.textContent = texto;
+        mensaje.classList.remove("d-none");
+      }
+
+      if (!docente) return error("No se encontro la cuenta docente.");
+      if (docente.clave !== actual) return error("La contrasena actual no es correcta.");
+      if (nueva.length < 4) return error("La contrasena nueva debe tener al menos 4 caracteres.");
+      if (nueva !== confirmar) return error("La confirmacion no coincide.");
+
+      docente.clave = nueva;
+      guardarJSON("docentes", docentes);
+      bootstrap.Modal.getInstance(document.getElementById("modalClaveDocente")).hide();
+      alert("Contrasena actualizada correctamente.");
+    }
+
+    function renderNavbar() {
+      const rol = sessionStorage.getItem("sesionRol");
+      const nav = document.getElementById("appNavbar");
+      if (rol === "admin") {
+        nav.innerHTML = `
+          <a href="admin.html"><i class="bi bi-shield-lock-fill"></i> ADMIN</a>
+          <a href="horario.html"><i class="bi bi-calendar3-week-fill"></i> HORARIOS</a>
+          <a class="active" href="notas.html"><i class="bi bi-journal-check"></i> NOTAS</a>
+          <button type="button" onclick="irAAsistencias()"><i class="bi bi-clipboard2-check-fill"></i> ASISTENCIAS</button>
+          <span class="nav-spacer"></span>
+          <button type="button" onclick="cerrarSesion()"><i class="bi bi-box-arrow-right"></i> CERRAR SESION</button>
+        `;
+        return;
+      }
+      if (rol === "director") {
+        nav.classList.add("director-navbar");
+        nav.innerHTML = directorNavbarHTML("notas");
+        return;
+      }
+      nav.classList.add("docente-navbar");
+      nav.innerHTML = docenteNavbarHTML("notas");
+    }
+
+    function actualizarNavegacionCurso() {
+      const cursoQS = cursoActual ? `?curso=${encodeURIComponent(cursoActual)}` : "";
+      const navTareas = document.getElementById("navTareas");
+      const navNotas = document.getElementById("navNotas");
+      if (navTareas) navTareas.href = `mes.html${cursoQS}`;
+      if (navNotas) navNotas.href = `notas.html${cursoQS}`;
+    }
+
+    function obtenerMaterias(trimestre = vistaActual) {
+      const notas = leerJSON("notas");
+      const equivalencias = {
+        "1er Trimestre": "Trimestre 1",
+        "2do Trimestre": "Trimestre 2",
+        "3er Trimestre": "Trimestre 3"
+      };
+      return notas?.[cursoActual]?.[trimestre]
+        || notas?.[cursoActual]?.[equivalencias[trimestre]]
+        || {};
+    }
+
+    function trimestrePorMes(fechaISO) {
+      const mes = Number(String(fechaISO).slice(5, 7));
+      if (mes >= 1 && mes <= 4) return "1er Trimestre";
+      if (mes >= 5 && mes <= 8) return "2do Trimestre";
+      return "3er Trimestre";
+    }
+
+    function esAsistencia(estado) {
+      return ["verde", "amarillo", "morado"].includes(estado);
+    }
+
+    function esPuntual(estado) {
+      return ["verde", "morado"].includes(estado);
+    }
+
+    function fechasAsistenciaRegistradas(trimestre) {
+      const asistencias = leerJSON("asistencias");
+      const trimestresAsistencia = leerJSON("trimestresAsistencia");
+      const fechas = new Set();
+
+      Object.keys(asistencias).forEach(clave => {
+        const [fecha, curso] = clave.split("|");
+        if (curso !== cursoActual) return;
+        const triClave = trimestresAsistencia[fecha] || trimestrePorMes(fecha);
+        if (triClave !== trimestre) return;
+        if (esAsistencia(asistencias[clave])) fechas.add(fecha);
+      });
+
+      return [...fechas].sort();
+    }
+
+    function registrosAsistenciaAlumno(alumno, trimestre) {
+      const asistencias = leerJSON("asistencias");
+      return fechasAsistenciaRegistradas(trimestre).map(fecha => asistencias[`${fecha}|${cursoActual}|${alumno}`] || "blanco");
+    }
+
+    function asistencia(alumno, trimestre) {
+      const registros = registrosAsistenciaAlumno(alumno, trimestre);
+      const total = registros.length;
+      const presentes = registros.filter(esAsistencia).length;
+      return total ? notaEntera((presentes * 100) / total) : 35;
+    }
+
+    function puntualidad(alumno, trimestre) {
+      const registros = registrosAsistenciaAlumno(alumno, trimestre);
+      const asistidos = registros.filter(esAsistencia);
+      const puntuales = asistidos.filter(esPuntual).length;
+      return asistidos.length ? notaEntera((puntuales * 100) / asistidos.length) : 35;
+    }
+
+    function criteriosPorDefecto() {
+      return [
+        { id:"participacion", nombre:"Participacion", max:10 },
+        { id:"honestidad", nombre:"Honestidad", max:5 }
+      ];
+    }
+
+    function normalizarCriterios(valor) {
+      if (!Array.isArray(valor) || !valor.length) return criteriosPorDefecto();
+      return valor.map((item, index) => typeof item === "string"
+        ? { id:`criterio${index + 1}`, nombre:item, max:100 }
+        : {
+            id:item.id || `criterio${index + 1}`,
+            nombre:item.nombre || `SER ${index + 1}`,
+            max:Math.max(1, Number(item.max || 100))
+          });
+    }
+
+    function obtenerCriterios(trimestre = vistaActual) {
+      const todos = leerJSON("serCriterios");
+      return normalizarCriterios(todos?.[cursoActual]?.[trimestre]);
+    }
+
+    function guardarCriterios(lista) {
+      const todos = leerJSON("serCriterios");
+      if (!todos[cursoActual]) todos[cursoActual] = {};
+      todos[cursoActual][vistaActual] = lista;
+      guardarJSON("serCriterios", todos);
+    }
+
+    function valorSer(alumno, criterio, trimestre = vistaActual) {
+      const ser = leerJSON("ser");
+      const datos = ser?.[cursoActual]?.[trimestre]?.[alumno] || {};
+      return Number(datos[criterio.id] ?? 0);
+    }
+
+    function guardarSer(alumno, criterioId, valor) {
+      const ser = leerJSON("ser");
+      if (!ser[cursoActual]) ser[cursoActual] = {};
+      if (!ser[cursoActual][vistaActual]) ser[cursoActual][vistaActual] = {};
+      if (!ser[cursoActual][vistaActual][alumno]) ser[cursoActual][vistaActual][alumno] = {};
+      ser[cursoActual][vistaActual][alumno][criterioId] = Math.max(0, Number(valor || 0));
+      guardarJSON("ser", ser);
+    }
+
+    function valorAuto(alumno, trimestre = vistaActual) {
+      const auto = leerJSON("autoevaluacion");
+      return Number(auto?.[cursoActual]?.[trimestre]?.[alumno] ?? 0);
+    }
+
+    function configAuto(trimestre = vistaActual) {
+      const todos = leerJSON("autoevaluacionConfig");
+      const cfg = todos?.[cursoActual]?.[trimestre] || {};
+      return {
+        titulo: cfg.titulo || "Autoevaluacion",
+        max: Math.max(1, Number(cfg.max || 5))
+      };
+    }
+
+    function guardarConfigAuto(cfg) {
+      const todos = leerJSON("autoevaluacionConfig");
+      if (!todos[cursoActual]) todos[cursoActual] = {};
+      todos[cursoActual][vistaActual] = cfg;
+      guardarJSON("autoevaluacionConfig", todos);
+    }
+
+    function guardarAuto(alumno, valor) {
+      const auto = leerJSON("autoevaluacion");
+      if (!auto[cursoActual]) auto[cursoActual] = {};
+      if (!auto[cursoActual][vistaActual]) auto[cursoActual][vistaActual] = {};
+      auto[cursoActual][vistaActual][alumno] = Math.max(0, Number(valor || 0));
+      guardarJSON("autoevaluacion", auto);
+    }
+
+    function renderCursos() {
+      const cursos = obtenerCursos();
+      const colores = leerJSON("cursoColores");
+
+      if (!cursos.length) {
+        cursoSelector.innerHTML = "";
+        contenido.innerHTML = '<div class="alert alert-info text-center">No existen cursos registrados.</div>';
+        return;
+      }
+
+      if (!cursoActual || !cursos.includes(cursoActual)) {
+        const cursoParametro = new URLSearchParams(window.location.search).get("curso");
+        const cursoGuardado = cursoParametro || localStorage.getItem("cursoSeleccionado");
+        cursoActual = cursos.includes(cursoGuardado) ? cursoGuardado : cursos[0];
+        localStorage.setItem("cursoSeleccionado", cursoActual);
+      }
+      actualizarNavegacionCurso();
+      cursoSelector.innerHTML = cursos.map(curso => {
+        const activo = curso === cursoActual;
+        const color = colores[curso] || "#0d6efd";
+        return `<button class="course-btn ${activo ? "active" : ""}" style="${activo ? `background:${color}; border-color:${color};` : `border-color:${color};`}" onclick="cambiarCurso('${escaparAtributo(curso)}')">${escapar(curso)}</button>`;
+      }).join("");
+    }
+
+    function cambiarCurso(curso) {
+      cursoActual = curso;
+      localStorage.setItem("cursoSeleccionado", curso);
+      actualizarNavegacionCurso();
+      materiaActual = "";
+      renderTodo();
+    }
+
+    function renderTrimestres() {
+      const radio = document.querySelector(`input[name="trimestre"][value="${vistaActual}"]`);
+      if (radio) radio.checked = true;
+    }
+
+    function actividadesMateria(trimestre, materia) {
+      const materias = obtenerMaterias(trimestre);
+      const actividades = materias[materia] || {};
+      const tareas = [];
+      const examenes = [];
+      Object.keys(actividades).forEach(nombre => {
+        const actividad = { nombre, ...actividades[nombre] };
+        if (actividad.tipo === "Tarea") tareas.push(actividad);
+        else examenes.push(actividad);
+      });
+      return { tareas, examenes };
+    }
+
+    function materiasDisponiblesVista() {
+      const materiasDocente = materiasDocenteAsignadas(cursoActual);
+      const filtrar = materias => materiasDocente.length ? materias.filter(materia => materiasDocente.includes(materia)) : materias;
+      if (vistaActual !== "Promedio Final") return filtrar(Object.keys(obtenerMaterias(vistaActual)));
+      return filtrar([...new Set(TRIS.flatMap(tri => Object.keys(obtenerMaterias(tri))))]);
+    }
+
+    function renderTabs() {
+      const materias = materiasDisponiblesVista();
+      if (!materias.length) {
+        tabsMaterias.innerHTML = "";
+        materiaActual = "";
+        return;
+      }
+      if (!materiaActual || !materias.includes(materiaActual)) materiaActual = materias[0];
+      tabsMaterias.innerHTML = materias.map(materia => `
+        <li class="nav-item">
+          <button class="nav-link ${materia === materiaActual ? "active" : ""}" onclick="cambiarMateria('${escaparAtributo(materia)}')">${escapar(materia)}</button>
+        </li>
+      `).join("");
+    }
+
+    function cambiarMateria(materia) {
+      materiaActual = materia;
+      renderTabs();
+      renderNotas();
+    }
+
+    function promedioActividades(lista, alumno) {
+      if (!lista.length) return 35;
+      const suma = lista.reduce((total, act) => {
+        const dato = act.alumnos?.[alumno];
+        return total + notaEntera(dato ? dato.nota100 : 35);
+      }, 0);
+      return notaEntera(suma / lista.length);
+    }
+
+    function responsabilidad(tareas, alumno) {
+      if (!tareas.length) return 35;
+      const buenas = tareas.filter(tarea => {
+        const dato = tarea.alumnos?.[alumno];
+        return dato && notaEntera(dato.nota100) > 35;
+      }).length;
+      return notaEntera((buenas * 100) / tareas.length);
+    }
+
+    function calcularAlumno(alumno, trimestre, materia) {
+      const { tareas, examenes } = actividadesMateria(trimestre, materia);
+      const hacer100 = promedioActividades(tareas, alumno);
+      const saber100 = promedioActividades(examenes, alumno);
+      const asistencia100 = asistencia(alumno, trimestre);
+      const puntualidad100 = puntualidad(alumno, trimestre);
+      const responsabilidad100 = responsabilidad(tareas, alumno);
+      const criterios = obtenerCriterios(trimestre);
+      const notasSer = criterios.map(criterio => convertirRango(valorSer(alumno, criterio, trimestre), criterio.max));
+      const ser100 = notaEntera((asistencia100 + puntualidad100 + responsabilidad100 + notasSer.reduce((s, n) => s + n, 0)) / (3 + criterios.length));
+      const autoCfg = configAuto(trimestre);
+      const auto100 = convertirRango(valorAuto(alumno, trimestre), autoCfg.max);
+      const hacer40 = ponderar(hacer100, 40);
+      const saber45 = ponderar(saber100, 45);
+      const ser10 = ponderar(ser100, 10);
+      const auto5 = ponderar(auto100, 5);
+      const final = hacer40 + saber45 + ser10 + auto5;
+      return { tareas, examenes, criterios, hacer100, saber100, asistencia100, puntualidad100, responsabilidad100, notasSer, ser100, auto100, hacer40, saber45, ser10, auto5, final };
+    }
+
+    function renderCriterios() {
+      return;
+    }
+
+    function actualizarCriterio(index, campo, valor) {
+      const lista = obtenerCriterios();
+      if (!lista[index]) return;
+      lista[index][campo] = campo === "max" ? Math.max(1, Number(valor || 1)) : (valor.trim() || `SER ${index + 1}`);
+      guardarCriterios(lista);
+      renderTodo();
+    }
+
+    function agregarCriterioSer() {
+      if (vistaActual === "Promedio Final") return alert("Seleccione un trimestre para agregar columnas SER.");
+      const lista = obtenerCriterios();
+      lista.push({ id:`criterio_${Date.now()}`, nombre:"Nueva nota SER", max:100 });
+      guardarCriterios(lista);
+      renderTodo();
+    }
+
+    function eliminarCriterioSer(index) {
+      const lista = obtenerCriterios();
+      lista.splice(index, 1);
+      guardarCriterios(lista);
+      renderTodo();
+    }
+
+    function abrirConfigSer(criterioId) {
+      const criterios = obtenerCriterios();
+      const index = criterios.findIndex(c => c.id === criterioId);
+      if (index < 0) return;
+      configContexto = { tipo: "ser", index };
+      document.getElementById("tituloConfigNota").textContent = "Configurar SER";
+      document.getElementById("configTitulo").value = criterios[index].nombre;
+      document.getElementById("configMax").value = criterios[index].max;
+      document.getElementById("btnEliminarConfig").classList.remove("hidden");
+      modalConfigNota.show();
+    }
+
+    function abrirConfigAuto() {
+      const cfg = configAuto();
+      configContexto = { tipo: "auto" };
+      document.getElementById("tituloConfigNota").textContent = "Configurar autoevaluacion";
+      document.getElementById("configTitulo").value = cfg.titulo;
+      document.getElementById("configMax").value = cfg.max;
+      document.getElementById("btnEliminarConfig").classList.add("hidden");
+      modalConfigNota.show();
+    }
+
+    function guardarConfigNota() {
+      if (!configContexto) return;
+      const titulo = document.getElementById("configTitulo").value.trim() || "Nota";
+      const max = Math.max(1, Number(document.getElementById("configMax").value || 1));
+
+      if (configContexto.tipo === "ser") {
+        const criterios = obtenerCriterios();
+        if (!criterios[configContexto.index]) return;
+        criterios[configContexto.index].nombre = titulo;
+        criterios[configContexto.index].max = max;
+        guardarCriterios(criterios);
+      } else {
+        guardarConfigAuto({ titulo, max });
+      }
+
+      modalConfigNota.hide();
+      renderTodo();
+    }
+
+    function eliminarConfigNota() {
+      if (!configContexto || configContexto.tipo !== "ser") return;
+      const criterios = obtenerCriterios();
+      const criterio = criterios[configContexto.index];
+      if (!criterio) return;
+      if (!confirm(`Esta seguro que desea eliminar ${criterio.nombre}?`)) return;
+      criterios.splice(configContexto.index, 1);
+      guardarCriterios(criterios);
+      modalConfigNota.hide();
+      renderTodo();
+    }
+
+    function abrirNota(tipo, alumno, criterioId = "") {
+      if (vistaActual === "Promedio Final") return;
+      let max = 5;
+      let titulo = "Autoevaluacion";
+      let valor = valorAuto(alumno);
+      if (tipo === "ser") {
+        const criterio = obtenerCriterios().find(c => c.id === criterioId);
+        if (!criterio) return;
+        max = Number(criterio.max);
+        titulo = criterio.nombre;
+        valor = valorSer(alumno, criterio);
+        modalContexto = { tipo, alumno, criterioId };
+      } else {
+        const cfg = configAuto();
+        max = cfg.max;
+        titulo = cfg.titulo;
+        modalContexto = { tipo, alumno };
+      }
+
+      document.getElementById("tituloModalNota").textContent = titulo;
+      document.getElementById("detalleModalNota").textContent = `${alumno} - maximo ${max}`;
+      let html = "";
+      for (let i = 0; i <= max; i++) html += `<button class="nota-btn ${i === valor ? "sel" : ""}" onclick="seleccionarNota(${i})">${i}</button>`;
+      document.getElementById("botonesNota").innerHTML = html;
+      modalNota.show();
+    }
+
+    function seleccionarNota(valor) {
+      if (!modalContexto) return;
+      if (modalContexto.tipo === "ser") guardarSer(modalContexto.alumno, modalContexto.criterioId, valor);
+      else guardarAuto(modalContexto.alumno, valor);
+      modalNota.hide();
+      renderNotas();
+    }
+
+    function renderResumen(alumnos, finales) {
+      return;
+    }
+
+    function renderNotas() {
+      if (!cursoActual) return;
+      const alumnos = leerJSON("alumnos")[cursoActual] || [];
+
+      if (!materiaActual) {
+        contenido.innerHTML = '<div class="alert alert-warning text-center">No existen notas registradas para esta vista.</div>';
+        return;
+      }
+
+      if (vistaActual === "Promedio Final") {
+        renderPromedioFinal(alumnos);
+        return;
+      }
+
+      localStorage.setItem("trimestreActual", vistaActual);
+      const { tareas, examenes } = actividadesMateria(vistaActual, materiaActual);
+      const criterios = obtenerCriterios();
+      const autoCfg = configAuto();
+      const finales = [];
+
+      let html = `
+        <div class="table-wrap">
+          <table class="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th rowspan="2" class="alumno">Alumno</th>
+                <th colspan="${5 + criterios.length}" class="gR">SER 10 <button class="btn btn-sm btn-light ms-1" onclick="agregarCriterioSer()">+</button></th>
+                <th colspan="${Math.max(1, examenes.length + 2)}" class="gS">SABER 45</th>
+                <th colspan="${Math.max(1, tareas.length + 2)}" class="gH">HACER 40</th>
+                <th colspan="2" class="gA"><button class="config-btn" onclick="abrirConfigAuto()">${escapar(autoCfg.titulo)} 5</button></th>
+                <th rowspan="2" class="gF">Nota final</th>
+              </tr>
+              <tr>
+      `;
+      html += '<th class="vertical">Asistencia</th><th class="vertical">Puntualidad</th><th class="vertical">Responsabilidad</th>';
+      criterios.forEach(c => html += `<th class="vertical"><button class="config-btn" onclick="abrirConfigSer('${escaparAtributo(c.id)}')">${escapar(c.nombre)}</button></th>`);
+      html += '<th class="vertical">Promedio</th><th class="vertical">Puntaje</th>';
+      examenes.forEach(e => html += `<th class="vertical">${escapar(e.nombre)}</th>`);
+      html += '<th class="vertical">Promedio</th><th class="vertical">Puntaje</th>';
+      tareas.forEach(t => html += `<th class="vertical">${escapar(t.nombre)}</th>`);
+      html += '<th class="vertical">Promedio</th><th class="vertical">Puntaje</th><th class="vertical">Nota</th><th class="vertical">Puntaje</th></tr></thead><tbody>';
+
+      alumnos.forEach((alumno, index) => {
+        const calc = calcularAlumno(alumno, vistaActual, materiaActual);
+        finales.push(calc.final);
+        html += `<tr class="student-row c${(index % 8) + 1}"><td class="alumno"><a class="student-link" href="${urlAlumno(alumno)}">${escapar(alumno)}</a></td>`;
+
+        html += `<td class="${color(calc.asistencia100)}">${calc.asistencia100}</td><td class="${color(calc.puntualidad100)}">${calc.puntualidad100}</td><td class="${color(calc.responsabilidad100)}">${calc.responsabilidad100}</td>`;
+
+        criterios.forEach((criterio, index) => {
+          const nota = calc.notasSer[index];
+          html += `<td><button class="btn btn-sm ${nota > 50 ? "btn-success" : "btn-danger"} score-btn" onclick="abrirNota('ser','${escaparAtributo(alumno)}','${escaparAtributo(criterio.id)}')">${nota}</button></td>`;
+        });
+
+        html += `<td class="${color(calc.ser100)}">${calc.ser100}</td><td class="weighted">${calc.ser10}</td>`;
+        
+        calc.examenes.forEach(examen => {
+          const dato = examen.alumnos?.[alumno];
+          const nota = notaEntera(dato ? dato.nota100 : 35);
+          html += `<td class="${color(nota)}">${nota}</td>`;
+        });
+        html += `<td class="${color(calc.saber100)}">${calc.saber100}</td><td class="weighted">${calc.saber45}</td>`;
+
+        calc.tareas.forEach(tarea => {
+          const dato = tarea.alumnos?.[alumno];
+          const nota = notaEntera(dato ? dato.nota100 : 35);
+          html += `<td class="${color(nota)}">${nota}</td>`;
+        });
+        html += `<td class="${color(calc.hacer100)}">${calc.hacer100}</td><td class="weighted">${calc.hacer40}</td>`;
+        html += `<td><button class="btn btn-sm ${calc.auto100 > 50 ? "btn-success" : "btn-danger"} score-btn" onclick="abrirNota('auto','${escaparAtributo(alumno)}')">${calc.auto100}</button></td><td class="weighted">${calc.auto5}</td>`;
+        html += `<td class="final-cell ${calc.final <= 50 ? "final-bad" : "final-ok"}">${calc.final}</td></tr>`;
+      });
+
+      html += "</tbody></table></div>";
+      contenido.innerHTML = html;
+      renderResumen(alumnos, finales);
+    }
+
+    function renderPromedioFinal(alumnos) {
+      const finales = [];
+      let html = `
+        <div class="table-wrap">
+          <table class="table table-bordered table-sm">
+            <thead><tr>
+              <th class="alumno">Alumno</th>
+              <th class="gF">1er Trimestre</th>
+              <th class="gF">2do Trimestre</th>
+              <th class="gF">3er Trimestre</th>
+              <th class="gF">Promedio final</th>
+            </tr></thead><tbody>
+      `;
+
+      alumnos.forEach((alumno, index) => {
+        const notasTri = TRIS.map(tri => calcularAlumno(alumno, tri, materiaActual).final);
+        const promedio = Math.round(notasTri.reduce((s, n) => s + n, 0) / notasTri.length);
+        finales.push(promedio);
+        html += `<tr class="student-row c${(index % 8) + 1}"><td class="alumno"><a class="student-link" href="${urlAlumno(alumno)}">${escapar(alumno)}</a></td>`;
+        notasTri.forEach(n => html += `<td class="${color(n)}">${n}</td>`);
+        html += `<td class="final-cell ${promedio <= 50 ? "final-bad" : "final-ok"}">${promedio}</td></tr>`;
+      });
+
+      html += "</tbody></table></div>";
+      contenido.innerHTML = html;
+      renderResumen(alumnos, finales);
+    }
+
+    function imprimirNotas() {
+      const tabla = contenido.querySelector("table");
+      if (!tabla) {
+        alert("No hay notas para imprimir.");
+        return;
+      }
+
+      const copia = tabla.cloneNode(true);
+      copia.querySelectorAll("button").forEach(boton => {
+        boton.replaceWith(document.createTextNode(boton.textContent.trim()));
+      });
+      copia.querySelectorAll("th.vertical").forEach(th => {
+        th.className = "vertical-print";
+      });
+
+      copia.querySelectorAll("*").forEach(elemento => {
+        if (elemento.className !== "vertical-print") elemento.removeAttribute("class");
+        elemento.removeAttribute("style");
+      });
+
+      const tituloVista = vistaActual === "Promedio Final" ? "Promedio final" : vistaActual;
+      const area = document.getElementById("areaImpresion");
+      area.innerHTML = `
+          <h1>Registro de Notas</h1>
+          <div class="meta">
+            <strong>Curso:</strong> ${escapar(cursoActual)}<br>
+            <strong>Materia:</strong> ${escapar(materiaActual || "-")}<br>
+            <strong>Trimestre:</strong> ${escapar(tituloVista)}
+          </div>
+          ${copia.outerHTML}
+      `;
+      window.print();
+    }
+
+    function renderTodo() {
+      renderCursos();
+      renderTrimestres();
+      renderCriterios();
+      renderTabs();
+      renderNotas();
+    }
+
+    document.querySelectorAll('input[name="trimestre"]').forEach(input => {
+      input.addEventListener("change", () => {
+        vistaActual = input.value;
+        if (vistaActual !== "Promedio Final") localStorage.setItem("trimestreActual", vistaActual);
+        materiaActual = "";
+        renderTodo();
+      });
+    });
+
+    renderNavbar();
+    renderTodo();
+  </script>
+</body>
+</html>
