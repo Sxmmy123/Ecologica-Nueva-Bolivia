@@ -581,6 +581,7 @@
 
     function guardarJSON(clave, valor) {
       localStorage.setItem(clave, JSON.stringify(valor));
+      if (window.firebaseMarkPackage) window.firebaseMarkPackage(clave);
     }
 
     function escapar(valor) {
@@ -1008,7 +1009,6 @@
   </script>
 </body>
 </html>
-
 
 
 
