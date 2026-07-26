@@ -120,6 +120,7 @@
 
     function guardarJSON(clave, valor, sincronizar = true) {
       localStorage.setItem(clave, JSON.stringify(valor));
+      if (sincronizar && window.firebaseMarkPackage) window.firebaseMarkPackage(clave);
       if (sincronizar && window.firebaseSyncNow) window.firebaseSyncNow();
     }
 
@@ -399,10 +400,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
