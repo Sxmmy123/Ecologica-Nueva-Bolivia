@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -176,7 +176,10 @@
       catch (error) { return inicial; }
     }
 
-    function guardarJSON(clave, valor) { localStorage.setItem(clave, JSON.stringify(valor)); }
+    function guardarJSON(clave, valor) {
+      localStorage.setItem(clave, JSON.stringify(valor));
+      if (window.firebaseMarkPackage) window.firebaseMarkPackage(clave);
+    }
 
     function escapar(valor) {
       return String(valor)
@@ -929,10 +932,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
