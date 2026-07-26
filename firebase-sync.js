@@ -682,11 +682,17 @@
     }
 
     if (key === "actividades") {
-      return groupActivities(value).map(group => ({
+      const fullRecord = {
+        collection: "actividades",
+        id: "todos",
+        data: { key: "actividades", value, operation: "set", updatedAt }
+      };
+      const groupedRecords = groupActivities(value).map(group => ({
         collection: group.collection,
         id: slug(group.course),
         data: { key: "actividades", course: group.course, value: stringify(group.value), operation: "set", updatedAt }
       }));
+      return [fullRecord, ...groupedRecords];
     }
 
     const storageKey = storageCourseKey(key);
@@ -947,6 +953,16 @@
   }
 
   async function pullActivities(next) {
+    const full = await baseRef.collection("actividades").doc("todos").get();
+    if (full.exists) {
+      const data = full.data() || {};
+      next.actividades = {
+        value: String(data.value ?? "[]"),
+        updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
+      };
+      return;
+    }
+
     const hacer = await readCollection("hacer");
     const saber = await readCollection("saber");
     const activities = [];
@@ -1129,6 +1145,24 @@
     if (isViewerRole()) return;
     queueAllLocalData();
     scheduleSync();
+  };
+
+  window.firebaseMarkPackage = function (key) {
+    const normalized = canonicalKey(key);
+    if (!shouldSync(normalized) || !canWriteKey(normalized)) return false;
+    const updatedAt = Date.now();
+    touchPackageMeta(normalized, updatedAt);
+    markLocalDirty(updatedAt);
+    const queue = readQueue().filter(item => canonicalKey(item.key) !== normalized);
+    queue.push({
+      key: normalized,
+      value: rawGetItem(normalized),
+      operation: rawGetItem(normalized) === null ? "remove" : "set",
+      updatedAt
+    });
+    writeQueue(queue);
+    scheduleSync(navigator.onLine ? 0 : null);
+    return true;
   };
 
   window.firebaseAfterLogin = async function () {
