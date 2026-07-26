@@ -1,4 +1,4 @@
-const CACHE_NAME = "nueva-bolivia-pwa-v11";
+const CACHE_NAME = "nueva-bolivia-pwa-v12";
 
 const CORE_ASSETS = [
   "./",
