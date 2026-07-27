@@ -1,0 +1,775 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boleta del Alumno</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background:#eef5f9; padding:86px 18px 18px; font-family:"Segoe UI", Arial, sans-serif; color:#213547; }
+    .alumno-role body { padding:18px; }
+    main.container-fluid { max-width:1180px; margin:0 auto; }
+    .app-navbar { background:#12355b; border-radius:0; box-shadow:0 6px 16px rgba(0,0,0,.14); display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; left:0; margin:0; min-height:58px; padding:10px 24px; position:fixed; right:0; top:0; width:100%; z-index:1050; }
+    .app-navbar a, .app-navbar button { align-items:center; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:8px; color:#fff; display:inline-flex; gap:7px; font-weight:800; min-height:38px; padding:8px 14px; text-decoration:none; }
+    .app-navbar .active { background:#fff; color:#12355b; }
+    .nav-spacer { flex:1 1 auto; }
+    .director-navbar { align-items:center; justify-content:flex-start; }
+    .director-brand { align-items:center; color:#fff; display:inline-flex; font-weight:900; gap:8px; letter-spacing:.3px; }
+    .director-menu-btn { background:#fff!important; border-color:#fff!important; color:#12355b!important; justify-content:center; margin-left:auto; min-width:46px; }
+    .director-sidebar { background:#12355b; color:#fff; max-width:96px; }
+    .director-sidebar .offcanvas-header { border-bottom:1px solid rgba(255,255,255,.18); justify-content:center; padding:12px 8px; }
+    .director-sidebar .btn-close { filter:invert(1) grayscale(1); opacity:.9; }
+    .director-sidebar .offcanvas-body { display:flex; flex-direction:column; }
+    .director-icon-nav { align-items:center; display:flex; flex:1; flex-direction:column; gap:12px; min-height:100%; }
+    .director-icon-nav a,
+    .director-icon-nav button { align-items:center; background:rgba(255,255,255,.12)!important; border:1px solid rgba(255,255,255,.25)!important; border-radius:14px; color:#fff!important; display:inline-flex; font-size:23px; height:54px; justify-content:center; padding:0!important; width:54px; }
+    .director-icon-nav .active { background:#fff!important; color:#12355b!important; }
+    .director-icon-nav .director-logout { background:#dc3545!important; border-color:#ffb3bd!important; margin-top:auto; }
+    .alumno-role .app-navbar,
+    .alumno-role #volverNotas { display:none!important; }
+    #cerrarSesionAlumno { display:none; }
+    .alumno-role #cerrarSesionAlumno { display:inline-flex!important; }
+    .topbar, .panel { background:#fff; border:1px solid #dbe7ef; border-radius:10px; box-shadow:0 6px 18px rgba(30,60,90,.08); }
+    .topbar { padding:18px; margin-bottom:16px; }
+    .panel { padding:16px; }
+    .student-name { color:#12355b; font-weight:900; margin:0; }
+    .meta-pill { background:#e8f0fe; border:1px solid #c8d8f5; border-radius:999px; color:#12355b; font-weight:800; padding:6px 12px; }
+    .term-group .btn { font-weight:800; }
+    .section-heading { color:#12355b; font-weight:950; margin:0 0 12px; }
+    .table-wrap { overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; }
+    table { margin-bottom:0!important; white-space:nowrap; }
+    th,td { text-align:center; vertical-align:middle; }
+    th:first-child, td:first-child { text-align:left; min-width:220px; }
+    .materia-row:hover { background:#f4f8ff; }
+    .gR { background:#6f42c1!important; color:#fff!important; }
+    .gS { background:#dc3545!important; color:#fff!important; }
+    .gH { background:#198754!important; color:#fff!important; }
+    .gA { background:#fd7e14!important; color:#fff!important; }
+    .gF { background:#12355b!important; color:#fff!important; }
+    .rojo { background:#f8d7da!important; color:#842029; font-weight:900; }
+    .verde { background:#d1e7dd!important; color:#0f5132; font-weight:900; }
+    .final-cell { color:#fff!important; font-size:16px; font-weight:900; }
+    .final-ok { background:#198754!important; }
+    .final-bad { background:#dc3545!important; }
+    .pending-item { border:1px solid #f1c9c9; border-radius:8px; background:#fff5f5; padding:10px; }
+    .tasks-dashboard { display:grid; grid-template-columns:repeat(2, minmax(260px, 1fr)); gap:16px; margin-bottom:18px; }
+    .task-panel { background:#fff; border:1px solid #dbe7ef; border-radius:10px; box-shadow:0 6px 18px rgba(30,60,90,.08); display:flex; flex-direction:column; min-height:230px; overflow:hidden; }
+    .task-panel-header { align-items:center; display:flex; justify-content:space-between; gap:10px; min-height:54px; padding:13px 16px; }
+    .task-panel-header.todo { background:#e8f0fe; color:#12355b; }
+    .task-panel-header.late { background:#fff1f1; color:#842029; }
+    .task-list { display:grid; gap:10px; max-height:320px; overflow:auto; padding:12px; }
+    .task-card { border:1px solid #dbe7ef; border-left:6px solid #0d6efd; border-radius:8px; background:#fff; padding:12px; }
+    .task-card.late { border-left-color:#dc3545; background:#fff8f8; }
+    .task-title { color:#12355b; font-weight:900; }
+    .task-meta { color:#5f7486; font-size:13px; font-weight:700; }
+    .task-empty { color:#5f7486; font-weight:800; padding:14px; text-align:center; }
+    .family-summary { display:grid; gap:10px; }
+    .family-stat { border:1px solid #dbe7ef; border-radius:10px; padding:12px; }
+    .family-number { color:#12355b; font-size:34px; font-weight:950; line-height:1; }
+    .summary-grid { display:grid; grid-template-columns:1fr; gap:16px; margin-bottom:16px; }
+    .summary-card { background:#fff; border:1px solid #dbe7ef; border-radius:10px; box-shadow:0 6px 18px rgba(30,60,90,.08); padding:14px; }
+    .attendance-card { cursor:pointer; display:grid; gap:14px; }
+    .attendance-card:hover { transform:translateY(-1px); box-shadow:0 10px 22px rgba(30,60,90,.12); }
+    .attendance-head { align-items:center; display:flex; justify-content:space-between; gap:12px; }
+    .attendance-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+    .attendance-stat { background:#f8fbfe; border:1px solid #dbe7ef; border-radius:8px; padding:12px; }
+    .attendance-number { color:#12355b; font-size:38px; font-weight:900; line-height:1; }
+    .attendance-bar { background:#edf2f7; border-radius:999px; height:12px; overflow:hidden; }
+    .attendance-fill { background:#198754; height:100%; width:0; }
+    .calendar-month { border:1px solid #dbe7ef; border-radius:10px; padding:10px; }
+    .calendar-title { color:#12355b; font-weight:900; margin-bottom:8px; text-transform:capitalize; }
+    .calendar-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+    .calendar-day, .calendar-head { border-radius:6px; font-size:12px; min-height:30px; padding:5px 2px; text-align:center; }
+    .calendar-head { background:#eef3f8; color:#476073; font-weight:800; }
+    .calendar-day { background:#f8fafc; border:1px solid #edf2f7; }
+    .calendar-day.absent { background:#dc3545; border-color:#dc3545; color:#fff; font-weight:900; }
+    .calendar-day.present { background:#d1e7dd; border-color:#a3cfbb; color:#0f5132; font-weight:800; }
+    .calendar-day.delay { background:#fff3cd; border-color:#ffda6a; color:#664d03; font-weight:800; }
+    .calendar-day.leave { background:#eadcff; border-color:#c9b3ff; color:#4b2d7f; font-weight:800; }
+    @media (max-width: 760px) {
+      body { padding:78px 12px 12px; }
+      .alumno-role body { padding:12px; }
+      .summary-grid, .tasks-dashboard, .attendance-stats { grid-template-columns:1fr; }
+      .topbar .btn-group { width:100%; }
+      .topbar .btn-group .btn { flex:1 1 0; }
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-sync.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#12355b">
+  <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
+  <link rel="apple-touch-icon" href="images/icon-180.png">
+  <script defer src="pwa.js"></script>
+</head>
+<body>
+  <script>
+    if (sessionStorage.getItem("sesionDocente") !== "activa" && sessionStorage.getItem("sesionAlumno") !== "activa") {
+      window.location.href = "index.html";
+    }
+    if (sessionStorage.getItem("sesionRol") === "alumno") {
+      document.documentElement.classList.add("alumno-role");
+    }
+  </script>
+  <main class="container-fluid">
+    <nav class="app-navbar" id="appNavbar"></nav>
+
+    <section class="topbar">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h2 class="student-name" id="tituloAlumno">Boleta del alumno</h2>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <span class="meta-pill" id="cursoTexto">Curso</span>
+            <span class="meta-pill" id="trimestreTexto">Trimestre</span>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a id="volverNotas" class="btn btn-outline-primary fw-bold" href="notas.html">Volver a notas</a>
+          <button id="cerrarSesionAlumno" class="btn btn-outline-danger fw-bold" onclick="cerrarSesion()"><i class="bi bi-box-arrow-right"></i> Cerrar sesion</button>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-3">
+        <div class="btn-group term-group" role="group" aria-label="Trimestre">
+          <input type="radio" class="btn-check" name="trimestre" id="tri1" value="1er Trimestre" autocomplete="off">
+          <label class="btn btn-outline-primary" for="tri1">1er Trimestre</label>
+          <input type="radio" class="btn-check" name="trimestre" id="tri2" value="2do Trimestre" autocomplete="off">
+          <label class="btn btn-outline-primary" for="tri2">2do Trimestre</label>
+          <input type="radio" class="btn-check" name="trimestre" id="tri3" value="3er Trimestre" autocomplete="off">
+          <label class="btn btn-outline-primary" for="tri3">3er Trimestre</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <div class="summary-card attendance-card" onclick="abrirCalendarioAsistencia()">
+        <div class="attendance-head">
+          <div class="section-heading mb-0"><i class="bi bi-clipboard2-check-fill"></i> Asistencia</div>
+          <div class="small text-muted fw-bold">Clic para ver calendario de faltas</div>
+        </div>
+        <div class="attendance-stats">
+          <div class="attendance-stat">
+            <div class="text-muted fw-bold">Asistencia</div>
+            <div class="attendance-number mt-1" id="asistenciaPorcentaje">0%</div>
+          </div>
+          <div class="attendance-stat">
+            <div class="text-muted fw-bold">Registros</div>
+            <div class="attendance-number mt-1" id="asistenciaDetalle">0/0</div>
+          </div>
+          <div class="attendance-stat">
+            <div class="text-muted fw-bold">Puntualidad</div>
+            <div class="attendance-number mt-1 text-warning" id="puntualidadDetalle">0%</div>
+          </div>
+        </div>
+        <div class="attendance-bar">
+          <div class="attendance-fill" id="asistenciaFill"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="panel">
+      <div id="contenido"></div>
+    </section>
+  </main>
+
+  <div class="modal fade" id="modalPendientes" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tituloModal">Pendientes</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="cuerpoModal"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalAsistencia" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tituloAsistencia">Asistencia</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="calendarioAsistencia" class="row g-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const TRIS = ["1er Trimestre", "2do Trimestre", "3er Trimestre"];
+    const params = new URLSearchParams(window.location.search);
+    const cursoActual = params.get("curso") || localStorage.getItem("cursoSeleccionado") || "";
+    const alumnoActual = params.get("alumno") || "";
+    let vistaActual = TRIS.includes(params.get("trimestre")) ? params.get("trimestre") : (localStorage.getItem("trimestreActual") || "1er Trimestre");
+    const modalPendientes = new bootstrap.Modal(document.getElementById("modalPendientes"));
+    const modalAsistencia = new bootstrap.Modal(document.getElementById("modalAsistencia"));
+
+    function leerJSON(clave, inicial = {}) {
+      try { return JSON.parse(localStorage.getItem(clave) || JSON.stringify(inicial)); }
+      catch (error) { return inicial; }
+    }
+
+    function escapar(valor) {
+      return String(valor)
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function escaparAtributo(valor) {
+      return String(valor).replaceAll("\\","\\\\").replaceAll("'","\\'").replaceAll('"',"&quot;");
+    }
+
+    function notaEntera(valor) {
+      const n = Math.round(Number(valor || 0));
+      return Math.max(35, Math.min(100, n));
+    }
+
+    function convertirRango(valor, maximo) {
+      const max = Number(maximo || 100);
+      if (!max) return 35;
+      return notaEntera((Number(valor || 0) * 100) / max);
+    }
+
+    function ponderar(nota100, peso) {
+      return Math.round((notaEntera(nota100) * peso) / 100);
+    }
+
+    function color(nota) {
+      return notaEntera(nota) > 50 ? "verde" : "rojo";
+    }
+
+    function irAAsistencias() {
+      const hoy = new Date();
+      window.location.href = `dia.html?anio=${hoy.getFullYear()}&mes=${hoy.getMonth() + 1}&dia=${hoy.getDate()}`;
+    }
+
+    function cerrarSesion() {
+      sessionStorage.clear();
+      window.location.href = "index.html";
+    }
+
+    function renderNavbar() {
+      const rol = sessionStorage.getItem("sesionRol");
+      const nav = document.getElementById("appNavbar");
+      if (rol === "alumno") {
+        nav.innerHTML = "";
+        return;
+      }
+      if (rol === "admin") {
+        nav.innerHTML = `
+          <a href="admin.html"><i class="bi bi-shield-lock-fill"></i> ADMIN</a>
+          <a href="horario.html"><i class="bi bi-calendar3-week-fill"></i> HORARIOS</a>
+          <a class="active" href="notas.html"><i class="bi bi-journal-check"></i> NOTAS</a>
+          <button type="button" onclick="irAAsistencias()"><i class="bi bi-clipboard2-check-fill"></i> ASISTENCIAS</button>
+          <span class="nav-spacer"></span>
+          <button type="button" onclick="cerrarSesion()"><i class="bi bi-box-arrow-right"></i> CERRAR SESION</button>
+        `;
+        return;
+      }
+      if (rol === "director") {
+        nav.classList.add("director-navbar");
+        nav.innerHTML = `
+          <span class="director-brand"><i class="bi bi-eye-fill"></i> DIRECTOR</span>
+          <button class="director-menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#directorSidebar" aria-controls="directorSidebar" aria-label="Abrir menu">
+            <i class="bi bi-list"></i>
+          </button>
+          <div class="offcanvas offcanvas-end director-sidebar" tabindex="-1" id="directorSidebar" aria-labelledby="directorSidebarLabel">
+            <div class="offcanvas-header">
+              <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+            </div>
+            <div class="offcanvas-body">
+              <nav class="director-icon-nav" id="directorSidebarLabel">
+                <button type="button" onclick="irAAsistencias()" title="Asistencias" aria-label="Asistencias"><i class="bi bi-clipboard2-check-fill"></i></button>
+                <a href="horario.html" title="Horarios" aria-label="Horarios"><i class="bi bi-calendar3-week-fill"></i></a>
+                <a class="active" href="notas.html" title="Notas" aria-label="Notas"><i class="bi bi-journal-check"></i></a>
+                <a href="reportes.html" title="Reportes" aria-label="Reportes"><i class="bi bi-bar-chart-line-fill"></i></a>
+                <button class="director-logout" type="button" onclick="cerrarSesion()" title="Salir" aria-label="Salir"><i class="bi bi-power"></i></button>
+              </nav>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      nav.classList.remove("director-navbar");
+      nav.innerHTML = `
+        <a href="horario.html"><i class="bi bi-calendar3-week-fill"></i> HORARIO</a>
+        <button type="button" onclick="irAAsistencias()"><i class="bi bi-clipboard2-check-fill"></i> ASISTENCIAS</button>
+        <a id="navTareas" href="mes.html"><i class="bi bi-card-checklist"></i> TAREAS</a>
+        <a id="navNotas" class="active" href="notas.html"><i class="bi bi-journal-check"></i> NOTAS</a>
+        <span class="nav-spacer"></span>
+        <button type="button" onclick="cerrarSesion()"><i class="bi bi-box-arrow-right"></i> SALIR</button>
+      `;
+    }
+
+    function actualizarLinks() {
+      const cursoQS = cursoActual ? `?curso=${encodeURIComponent(cursoActual)}` : "";
+      const navTareas = document.getElementById("navTareas");
+      const navNotas = document.getElementById("navNotas");
+      const volverNotas = document.getElementById("volverNotas");
+      if (navTareas) navTareas.href = `mes.html${cursoQS}`;
+      if (navNotas) navNotas.href = `notas.html${cursoQS}`;
+      if (volverNotas) volverNotas.href = `notas.html${cursoQS}`;
+    }
+
+    function obtenerMaterias(trimestre = vistaActual) {
+      const notas = leerJSON("notas");
+      const equivalencias = {
+        "1er Trimestre": "Trimestre 1",
+        "2do Trimestre": "Trimestre 2",
+        "3er Trimestre": "Trimestre 3"
+      };
+      return notas?.[cursoActual]?.[trimestre]
+        || notas?.[cursoActual]?.[equivalencias[trimestre]]
+        || {};
+    }
+
+    function actividadesMateria(trimestre, materia) {
+      const actividades = obtenerMaterias(trimestre)[materia] || {};
+      const tareas = [];
+      const examenes = [];
+      Object.keys(actividades).forEach(nombre => {
+        const actividad = { nombre, ...actividades[nombre] };
+        if (actividad.tipo === "Tarea") tareas.push(actividad);
+        else examenes.push(actividad);
+      });
+      return { tareas, examenes };
+    }
+
+    function fechaLocalISO(fecha = new Date()) {
+      return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+    }
+
+    function fechaLegible(fechaISO) {
+      if (!fechaISO) return "Sin fecha";
+      const [anio, mes, dia] = String(fechaISO).split("-").map(Number);
+      return new Date(anio, mes - 1, dia).toLocaleDateString("es-ES", { day:"2-digit", month:"long", year:"numeric" });
+    }
+
+    function diasHasta(fechaISO) {
+      const hoy = new Date(fechaLocalISO());
+      const [anio, mes, dia] = String(fechaISO).split("-").map(Number);
+      const fecha = new Date(anio, mes - 1, dia);
+      return Math.round((fecha - hoy) / 86400000);
+    }
+
+    function textoDistanciaFecha(fechaISO) {
+      const dias = diasHasta(fechaISO);
+      if (dias === 0) return "para hoy";
+      if (dias === 1) return "para manana";
+      if (dias > 1) return `en ${dias} dias`;
+      if (dias === -1) return "vencio ayer";
+      return `vencio hace ${Math.abs(dias)} dias`;
+    }
+
+    function actividadPerteneceTrimestre(actividad, trimestre = vistaActual) {
+      return (actividad.trimestre || trimestrePorMes(actividad.fecha)) === trimestre;
+    }
+
+    function notaActividadAlumno(actividad, trimestre = vistaActual) {
+      const notas = leerJSON("notas");
+      return notas?.[cursoActual]?.[trimestre]?.[actividad.materia]?.[actividad.titulo]?.alumnos?.[alumnoActual] || null;
+    }
+
+    function actividadesSeguimiento() {
+      const hoy = fechaLocalISO();
+      const actividades = leerJSON("actividades", []);
+      const pendientes = actividades
+        .filter(actividad => actividad.curso === cursoActual)
+        .filter(actividad => actividad.fecha && actividad.titulo && actividad.materia)
+        .filter(actividad => actividadPerteneceTrimestre(actividad))
+        .map(actividad => ({
+          ...actividad,
+          presentada: Boolean(notaActividadAlumno(actividad))
+        }))
+        .filter(actividad => !actividad.presentada);
+
+      return {
+        porHacer: pendientes.filter(actividad => String(actividad.fecha) >= hoy).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha))),
+        noPresentadas: pendientes.filter(actividad => String(actividad.fecha) < hoy).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))
+      };
+    }
+
+    function renderTarjetaTarea(actividad, vencida = false) {
+      return `
+        <div class="task-card ${vencida ? "late" : ""}">
+          <div class="d-flex justify-content-between gap-2">
+            <div class="task-title">${escapar(actividad.titulo || "Tarea")}</div>
+            <span class="badge ${vencida ? "text-bg-danger" : "text-bg-primary"}">${escapar(textoDistanciaFecha(actividad.fecha))}</span>
+          </div>
+          <div class="task-meta mt-1">
+            <i class="bi bi-book-fill"></i> ${escapar(actividad.materia || "Materia")}
+            <span class="mx-1">|</span>
+            <i class="bi bi-calendar-event"></i> ${escapar(fechaLegible(actividad.fecha))}
+            <span class="mx-1">|</span>
+            ${escapar(actividad.tipo || actividad.categoria || "Actividad")} - ${escapar(actividad.notaMaxima || 100)} pts
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSeguimientoTareas() {
+      const { porHacer, noPresentadas } = actividadesSeguimiento();
+
+      return `
+        <div class="tasks-dashboard">
+          <div class="task-panel">
+            <div class="task-panel-header todo">
+              <div class="fw-bold"><i class="bi bi-card-checklist"></i> Actividades programadas</div>
+              <span class="badge text-bg-primary">${porHacer.length}</span>
+            </div>
+            ${porHacer.length
+              ? `<div class="task-list">${porHacer.map(item => renderTarjetaTarea(item)).join("")}</div>`
+              : '<div class="task-empty">No tiene actividades programadas.</div>'}
+          </div>
+          <div class="task-panel">
+            <div class="task-panel-header late">
+              <div class="fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Actividades no presentadas</div>
+              <span class="badge text-bg-danger">${noPresentadas.length}</span>
+            </div>
+            ${noPresentadas.length
+              ? `<div class="task-list">${noPresentadas.map(item => renderTarjetaTarea(item, true)).join("")}</div>`
+              : '<div class="task-empty">No tiene actividades vencidas sin presentar.</div>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function trimestrePorMes(fechaISO) {
+      const mes = Number(String(fechaISO).slice(5, 7));
+      if (mes >= 1 && mes <= 4) return "1er Trimestre";
+      if (mes >= 5 && mes <= 8) return "2do Trimestre";
+      return "3er Trimestre";
+    }
+
+    function esAsistencia(estado) {
+      return ["verde", "amarillo", "morado"].includes(estado);
+    }
+
+    function esPuntual(estado) {
+      return ["verde", "morado"].includes(estado);
+    }
+
+    function fechasAsistenciaRegistradas(trimestre) {
+      const asistencias = leerJSON("asistencias");
+      const trimestresAsistencia = leerJSON("trimestresAsistencia");
+      const fechas = new Set();
+
+      Object.keys(asistencias).forEach(clave => {
+        const [fecha, curso] = clave.split("|");
+        if (curso !== cursoActual) return;
+        const triClave = trimestresAsistencia[fecha] || trimestrePorMes(fecha);
+        if (triClave !== trimestre) return;
+        if (esAsistencia(asistencias[clave])) fechas.add(fecha);
+      });
+
+      return [...fechas].sort();
+    }
+
+    function registrosAsistenciaAlumno(alumno, trimestre) {
+      const asistencias = leerJSON("asistencias");
+      return fechasAsistenciaRegistradas(trimestre).map(fecha => asistencias[`${fecha}|${cursoActual}|${alumno}`] || "blanco");
+    }
+
+    function asistencia(alumno, trimestre) {
+      const registros = registrosAsistenciaAlumno(alumno, trimestre);
+      const total = registros.length;
+      const presentes = registros.filter(esAsistencia).length;
+      return total ? notaEntera((presentes * 100) / total) : 35;
+    }
+
+    function puntualidad(alumno, trimestre) {
+      const registros = registrosAsistenciaAlumno(alumno, trimestre);
+      const asistidos = registros.filter(esAsistencia);
+      const puntuales = asistidos.filter(esPuntual).length;
+      return asistidos.length ? notaEntera((puntuales * 100) / asistidos.length) : 35;
+    }
+
+    function registrosAsistencia(trimestre = vistaActual) {
+      const asistencias = leerJSON("asistencias");
+      return fechasAsistenciaRegistradas(trimestre).map(fecha => ({
+        fecha,
+        estado: asistencias[`${fecha}|${cursoActual}|${alumnoActual}`] || "blanco"
+      }));
+    }
+
+    function resumenAsistencia() {
+      const registros = registrosAsistencia();
+      const presentes = registros.filter(item => esAsistencia(item.estado)).length;
+      const asistidos = registros.filter(item => esAsistencia(item.estado));
+      const puntuales = asistidos.filter(item => esPuntual(item.estado)).length;
+      const porcentaje = registros.length ? Math.round((presentes * 100) / registros.length) : 0;
+      const puntualidadPorcentaje = asistidos.length ? Math.round((puntuales * 100) / asistidos.length) : 0;
+      return { registros, presentes, puntuales, total: registros.length, porcentaje, puntualidadPorcentaje };
+    }
+
+    function criteriosPorDefecto() {
+      return [
+        { id:"participacion", nombre:"Participacion", max:10 },
+        { id:"honestidad", nombre:"Honestidad", max:5 }
+      ];
+    }
+
+    function normalizarCriterios(valor) {
+      if (!Array.isArray(valor) || !valor.length) return criteriosPorDefecto();
+      return valor.map((item, index) => typeof item === "string"
+        ? { id:`criterio${index + 1}`, nombre:item, max:100 }
+        : {
+            id:item.id || `criterio${index + 1}`,
+            nombre:item.nombre || `SER ${index + 1}`,
+            max:Math.max(1, Number(item.max || 100))
+          });
+    }
+
+    function obtenerCriterios(trimestre = vistaActual) {
+      const todos = leerJSON("serCriterios");
+      return normalizarCriterios(todos?.[cursoActual]?.[trimestre]);
+    }
+
+    function valorSer(alumno, criterio, trimestre = vistaActual) {
+      const ser = leerJSON("ser");
+      const datos = ser?.[cursoActual]?.[trimestre]?.[alumno] || {};
+      return Number(datos[criterio.id] ?? 0);
+    }
+
+    function valorAuto(alumno, trimestre = vistaActual) {
+      const auto = leerJSON("autoevaluacion");
+      return Number(auto?.[cursoActual]?.[trimestre]?.[alumno] ?? 0);
+    }
+
+    function configAuto(trimestre = vistaActual) {
+      const todos = leerJSON("autoevaluacionConfig");
+      const cfg = todos?.[cursoActual]?.[trimestre] || {};
+      return {
+        titulo: cfg.titulo || "Autoevaluacion",
+        max: Math.max(1, Number(cfg.max || 5))
+      };
+    }
+
+    function promedioActividades(lista, alumno) {
+      if (!lista.length) return 35;
+      const suma = lista.reduce((total, act) => {
+        const dato = act.alumnos?.[alumno];
+        return total + notaEntera(dato ? dato.nota100 : 35);
+      }, 0);
+      return notaEntera(suma / lista.length);
+    }
+
+    function responsabilidad(tareas, alumno) {
+      if (!tareas.length) return 35;
+      const buenas = tareas.filter(tarea => {
+        const dato = tarea.alumnos?.[alumno];
+        return dato && notaEntera(dato.nota100) > 35;
+      }).length;
+      return notaEntera((buenas * 100) / tareas.length);
+    }
+
+    function calcularAlumno(alumno, trimestre, materia) {
+      const { tareas, examenes } = actividadesMateria(trimestre, materia);
+      const hacer100 = promedioActividades(tareas, alumno);
+      const saber100 = promedioActividades(examenes, alumno);
+      const asistencia100 = asistencia(alumno, trimestre);
+      const puntualidad100 = puntualidad(alumno, trimestre);
+      const responsabilidad100 = responsabilidad(tareas, alumno);
+      const criterios = obtenerCriterios(trimestre);
+      const notasSer = criterios.map(criterio => convertirRango(valorSer(alumno, criterio, trimestre), criterio.max));
+      const ser100 = notaEntera((asistencia100 + puntualidad100 + responsabilidad100 + notasSer.reduce((s, n) => s + n, 0)) / (3 + criterios.length));
+      const autoCfg = configAuto(trimestre);
+      const auto100 = convertirRango(valorAuto(alumno, trimestre), autoCfg.max);
+      const hacer40 = ponderar(hacer100, 40);
+      const saber45 = ponderar(saber100, 45);
+      const ser10 = ponderar(ser100, 10);
+      const auto5 = ponderar(auto100, 5);
+      const final = hacer40 + saber45 + ser10 + auto5;
+      return { tareas, examenes, hacer100, saber100, asistencia100, puntualidad100, ser100, auto100, hacer40, saber45, ser10, auto5, final };
+    }
+
+    function pendientesMateria(materia) {
+      const { tareas, examenes } = actividadesMateria(vistaActual, materia);
+      return [...tareas, ...examenes].filter(actividad => !actividad.alumnos?.[alumnoActual]);
+    }
+
+    function abrirPendientes(materia) {
+      const pendientes = pendientesMateria(materia);
+      document.getElementById("tituloModal").textContent = materia;
+
+      if (!pendientes.length) {
+        document.getElementById("cuerpoModal").innerHTML = '<div class="alert alert-success mb-0 fw-bold">Presento todo en esta materia.</div>';
+        modalPendientes.show();
+        return;
+      }
+
+      document.getElementById("cuerpoModal").innerHTML = `
+        <div class="alert alert-warning fw-bold">Falta presentar ${pendientes.length} actividad(es).</div>
+        <div class="d-grid gap-2">
+          ${pendientes.map(item => `
+            <div class="pending-item">
+              <div class="fw-bold">${escapar(item.nombre)}</div>
+              <div class="small text-muted">${escapar(item.tipo || "Actividad")} - ${escapar(item.notaMaxima || 100)} pts</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      modalPendientes.show();
+    }
+
+    function actualizarAsistencia() {
+      const resumen = resumenAsistencia();
+      document.getElementById("asistenciaPorcentaje").textContent = `${resumen.porcentaje}%`;
+      document.getElementById("asistenciaDetalle").textContent = `${resumen.presentes}/${resumen.total}`;
+      document.getElementById("asistenciaFill").style.width = `${resumen.porcentaje}%`;
+      document.getElementById("puntualidadDetalle").textContent = `${resumen.puntualidadPorcentaje}%`;
+    }
+
+    function estadoClase(estado) {
+      if (estado === "blanco") return "absent";
+      if (estado === "verde") return "present";
+      if (estado === "amarillo") return "delay";
+      if (estado === "morado") return "leave";
+      return "";
+    }
+
+    function abrirCalendarioAsistencia() {
+      const registros = registrosAsistencia();
+      const contenedor = document.getElementById("calendarioAsistencia");
+      document.getElementById("tituloAsistencia").textContent = `Asistencia - ${alumnoActual} - ${vistaActual}`;
+
+      if (!registros.length) {
+        contenedor.innerHTML = '<div class="col-12"><div class="alert alert-info mb-0 text-center fw-bold">No hay asistencia registrada para este trimestre.</div></div>';
+        modalAsistencia.show();
+        return;
+      }
+
+      const porFecha = Object.fromEntries(registros.map(item => [item.fecha, item.estado]));
+      const meses = [...new Set(registros.map(item => item.fecha.slice(0, 7)))];
+      const diasSemana = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
+
+      contenedor.innerHTML = meses.map(mesClave => {
+        const [anio, mes] = mesClave.split("-").map(Number);
+        const primero = new Date(anio, mes - 1, 1);
+        const inicio = primero.getDay() === 0 ? 6 : primero.getDay() - 1;
+        const totalDias = new Date(anio, mes, 0).getDate();
+        let celdas = diasSemana.map(dia => `<div class="calendar-head">${dia}</div>`).join("");
+        for (let i = 0; i < inicio; i++) celdas += '<div></div>';
+        for (let dia = 1; dia <= totalDias; dia++) {
+          const fecha = `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+          const estado = porFecha[fecha] || "";
+          celdas += `<div class="calendar-day ${estadoClase(estado)}">${dia}</div>`;
+        }
+        const titulo = primero.toLocaleDateString("es-ES", { month:"long", year:"numeric" });
+        return `
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="calendar-month">
+              <div class="calendar-title">${escapar(titulo)}</div>
+              <div class="calendar-grid">${celdas}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+      modalAsistencia.show();
+    }
+
+    function renderTrimestre() {
+      const radio = document.querySelector(`input[name="trimestre"][value="${vistaActual}"]`);
+      if (radio) radio.checked = true;
+    }
+
+    function renderBoleta() {
+      document.getElementById("tituloAlumno").textContent = alumnoActual || "Alumno";
+      document.getElementById("cursoTexto").textContent = `Curso: ${cursoActual || "-"}`;
+      document.getElementById("trimestreTexto").textContent = vistaActual;
+      localStorage.setItem("cursoSeleccionado", cursoActual);
+      localStorage.setItem("trimestreActual", vistaActual);
+
+      const materias = Object.keys(obtenerMaterias(vistaActual));
+      actualizarAsistencia();
+      if (!cursoActual || !alumnoActual) {
+        document.getElementById("contenido").innerHTML = '<div class="alert alert-warning text-center mb-0">No se encontro el alumno seleccionado.</div>';
+        return;
+      }
+
+      const seguimientoHTML = renderSeguimientoTareas();
+
+      if (!materias.length) {
+        document.getElementById("contenido").innerHTML = seguimientoHTML + '<div class="alert alert-info text-center mb-0 fw-bold">No existen notas registradas para este trimestre.</div>';
+        return;
+      }
+
+      let sumaFinal = 0;
+      let html = seguimientoHTML + `
+        <h3 class="h5 section-heading"><i class="bi bi-journal-check"></i> Notas del trimestre</h3>
+        <div class="table-wrap">
+          <table class="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th class="gF">Materia</th>
+                <th class="gR">SER 10</th>
+                <th class="gS">SABER 45</th>
+                <th class="gH">HACER 40</th>
+                <th class="gA">Auto 5</th>
+                <th class="gF">Nota final</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      materias.forEach(materia => {
+        const calc = calcularAlumno(alumnoActual, vistaActual, materia);
+        sumaFinal += calc.final;
+        html += `
+          <tr class="materia-row">
+            <td class="fw-bold">${escapar(materia)}</td>
+            <td class="${color(calc.ser100)}">${calc.ser10}</td>
+            <td class="${color(calc.saber100)}">${calc.saber45}</td>
+            <td class="${color(calc.hacer100)}">${calc.hacer40}</td>
+            <td class="${color(calc.auto100)}">${calc.auto5}</td>
+            <td class="final-cell ${calc.final <= 50 ? "final-bad" : "final-ok"}">${calc.final}</td>
+          </tr>
+        `;
+      });
+
+      const promedio = Math.round(sumaFinal / materias.length);
+      html += `
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5" class="text-end">Promedio del trimestre</th>
+                <th class="final-cell ${promedio <= 50 ? "final-bad" : "final-ok"}">${promedio}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `;
+      document.getElementById("contenido").innerHTML = html;
+    }
+
+    document.querySelectorAll('input[name="trimestre"]').forEach(input => {
+      input.addEventListener("change", () => {
+        vistaActual = input.value;
+        renderTrimestre();
+        renderBoleta();
+      });
+    });
+
+    renderNavbar();
+    actualizarLinks();
+    renderTrimestre();
+    renderBoleta();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
