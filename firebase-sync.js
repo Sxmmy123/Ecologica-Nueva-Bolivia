@@ -82,6 +82,7 @@
   let syncing = false;
   let syncTimer = null;
   const activeWrites = new Map();
+  let lastInternetRequiredAlertAt = 0;
   let db = null;
   let baseRef = null;
   let legacyRef = null;
@@ -447,11 +448,37 @@
 
   function canWriteNow(key) {
     if (!canWriteKey(key)) return false;
-    if (isAdminRole() && !navigator.onLine) {
-      setStatus("admin-requiere-internet");
+    if (!navigator.onLine) {
+      notifyWriteBlocked("internet");
+      return false;
+    }
+    if (permissionBlocked) {
+      notifyWriteBlocked("permisos");
       return false;
     }
     return true;
+  }
+
+  function notifyWriteBlocked(reason = "internet") {
+    const message = reason === "permisos"
+      ? "No se puede guardar porque Firebase no tiene permisos de escritura."
+      : "Conecte a internet para guardar. Este cambio no fue registrado.";
+    setWorkMode(reason === "permisos" ? "sin-permisos-firestore" : "sin-internet-online");
+    setStatus(reason === "permisos" ? "sin-permisos-firestore" : "sin-internet-no-guardado");
+    window.dispatchEvent(new CustomEvent("firebaseWriteBlocked", { detail: { reason, message } }));
+    const now = Date.now();
+    if (now - lastInternetRequiredAlertAt > 2500) {
+      lastInternetRequiredAlertAt = now;
+      setTimeout(() => alert(message), 0);
+    }
+  }
+
+  function shouldBlockLocalWrite(key) {
+    const normalized = canonicalKey(key);
+    if (applyingRemote || !shouldSync(normalized) || !canWriteKey(normalized)) return false;
+    if (!navigator.onLine) return "internet";
+    if (permissionBlocked) return "permisos";
+    return false;
   }
 
   function hasUsefulParsed(value) {
@@ -518,6 +545,11 @@
   }
 
   localStorage.setItem = function (key, value) {
+    const blocked = shouldBlockLocalWrite(key);
+    if (blocked) {
+      notifyWriteBlocked(blocked);
+      return;
+    }
     rawSetItem(key, value);
     if (!applyingRemote) {
       if (booting && document.readyState === "loading") return;
@@ -526,6 +558,11 @@
   };
 
   localStorage.removeItem = function (key) {
+    const blocked = shouldBlockLocalWrite(key);
+    if (blocked) {
+      notifyWriteBlocked(blocked);
+      return;
+    }
     rawRemoveItem(key);
     if (!applyingRemote) {
       if (booting && document.readyState === "loading") return;
@@ -797,15 +834,15 @@
   function writeOnlineChange(item) {
     const key = canonicalKey(item.key);
     if (!shouldSync(key) || !canWriteKey(key)) return Promise.resolve(false);
-    if (!navigator.onLine || !baseRef) {
-      setWorkMode("sin-internet-online");
-      setStatus("sin-internet-no-guardado");
+    if (!navigator.onLine) {
+      notifyWriteBlocked("internet");
       return Promise.resolve(false);
     }
 
     const task = (activeWrites.get(key) || Promise.resolve())
       .catch(() => {})
       .then(async () => {
+        if (!baseRef && !(await initFirebase())) throw new Error("Firebase no esta listo para guardar.");
         setWorkMode(isTeacherRole() ? "docente-online" : "online");
         setStatus("guardando-firestore");
         const wrote = await writeItem({ ...item, key });
