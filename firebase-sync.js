@@ -465,13 +465,51 @@
       : "Conecte a internet para guardar. Este cambio no fue registrado.";
     setWorkMode(reason === "permisos" ? "sin-permisos-firestore" : "sin-internet-online");
     setStatus(reason === "permisos" ? "sin-permisos-firestore" : "sin-internet-no-guardado");
+    showInternetRequired(message);
     window.dispatchEvent(new CustomEvent("firebaseWriteBlocked", { detail: { reason, message } }));
     const now = Date.now();
     if (now - lastInternetRequiredAlertAt > 2500) {
       lastInternetRequiredAlertAt = now;
-      setTimeout(() => alert(message), 0);
     }
   }
+
+  function showInternetRequired(message = "Conecte a internet para continuar.") {
+    const render = () => {
+      if (!document.body) return;
+      let overlay = document.getElementById("internetRequiredOverlay");
+      if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "internetRequiredOverlay";
+        overlay.style.cssText = "position:fixed;inset:0;z-index:3000;display:grid;place-items:center;background:rgba(6,22,38,.62);backdrop-filter:blur(5px);padding:20px;";
+        overlay.innerHTML = `
+          <div style="width:min(360px,100%);background:#fff;border:1px solid #dbe7ef;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.32);padding:24px;text-align:center;">
+            <img src="images/logo-nueva-bolivia.png" alt="Unidad Educativa" style="width:104px;height:104px;object-fit:contain;border-radius:50%;margin-bottom:12px;box-shadow:0 10px 24px rgba(18,53,91,.18);">
+            <h2 style="color:#12355b;font-size:1.35rem;font-weight:900;margin:0 0 8px;">Conecte a internet</h2>
+            <p id="internetRequiredText" style="color:#526170;font-weight:800;margin:0 0 18px;">${message}</p>
+            <button type="button" id="internetRequiredRetry" style="background:#12355b;border:0;border-radius:8px;color:#fff;font-weight:900;padding:10px 16px;width:100%;">Reintentar</button>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.querySelector("#internetRequiredRetry").addEventListener("click", () => {
+          if (navigator.onLine) overlay.remove();
+          else showInternetRequired(message);
+        });
+      }
+      const text = overlay.querySelector("#internetRequiredText");
+      if (text) text.textContent = message;
+      overlay.style.display = "grid";
+    };
+    if (document.body) render();
+    else document.addEventListener("DOMContentLoaded", render, { once: true });
+  }
+
+  window.showInternetRequired = showInternetRequired;
+  window.requireInternetForFirebase = function (message = "Conecte a internet para continuar.") {
+    if (navigator.onLine) return true;
+    notifyWriteBlocked("internet");
+    showInternetRequired(message);
+    return false;
+  };
 
   function shouldBlockLocalWrite(key) {
     const normalized = canonicalKey(key);
