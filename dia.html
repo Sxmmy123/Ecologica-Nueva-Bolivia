@@ -276,12 +276,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v54"></script>
+  <script src="firebase-sync.js?v=online-v56"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v54"></script>
+  <script defer src="pwa.js?v=online-v56"></script>
 </head>
 <body>
 <script>
@@ -531,6 +531,7 @@
   }
 
   function irAAsistencias() {
+    if (sessionStorage.getItem("sesionRol") === "docente" && !window.requireInternetForFirebase("Conecte a internet para ingresar a asistencia.")) return;
     const ahora = new Date();
     window.location.href = `dia.html?anio=${ahora.getFullYear()}&mes=${ahora.getMonth() + 1}&dia=${ahora.getDate()}`;
   }
@@ -719,6 +720,23 @@
 
   function esVistaSoloLectura() {
     return ["admin", "director"].includes(sessionStorage.getItem("sesionRol"));
+  }
+
+  function docenteSinInternet() {
+    return sessionStorage.getItem("sesionRol") === "docente" && !navigator.onLine;
+  }
+
+  function mostrarBloqueoAsistenciaOffline() {
+    const detalleContainer = document.getElementById("detalleCursos");
+    if (detalleContainer) {
+      detalleContainer.innerHTML = `
+        <div class="alert alert-warning text-center fw-bold mx-auto" style="max-width:520px;">
+          <i class="bi bi-wifi-off fs-1 d-block mb-2"></i>
+          Conecte a internet para tomar asistencia.
+        </div>
+      `;
+    }
+    if (window.showInternetRequired) window.showInternetRequired("Conecte a internet para tomar asistencia.");
   }
 
   if (esVistaSoloLectura()) {
@@ -984,6 +1002,10 @@
   }
 
   function mostrarInformacion(modoEdicion = false) {
+    if (docenteSinInternet()) {
+      mostrarBloqueoAsistenciaOffline();
+      return;
+    }
     const fecha = new Date(anio, mes - 1, dia);
     document.getElementById("tituloDia").innerText =
       `${diasSemana[fecha.getDay()]}, ${dia} de ${nombreMeses[mes - 1]} de ${anio}`;
@@ -1069,6 +1091,10 @@
 
           if (editable) {
             divAlumno.onclick = () => {
+              if (docenteSinInternet()) {
+                mostrarBloqueoAsistenciaOffline();
+                return;
+              }
               const nuevoEstado = obtenerSiguienteEstado(estado);
               asistencias[claveAlumno] = nuevoEstado;
               localStorage.setItem("asistencias", JSON.stringify(asistencias));
@@ -1091,7 +1117,13 @@
       const btnEditar = document.createElement("button");
       btnEditar.className = "btn btn-sm btn-warning mt-3";
       btnEditar.textContent = "Editar asistencia";
-      btnEditar.onclick = () => mostrarInformacion(true);
+      btnEditar.onclick = () => {
+        if (docenteSinInternet()) {
+          mostrarBloqueoAsistenciaOffline();
+          return;
+        }
+        mostrarInformacion(true);
+      };
       detalleContainer.appendChild(btnEditar);
     }
   }
@@ -1110,6 +1142,14 @@
   renderTrimestrePanel();
   if (esVistaSoloLectura()) mostrarAsistenciaMensual();
   else mostrarInformacion();
+  window.addEventListener("offline", () => {
+    if (sessionStorage.getItem("sesionRol") === "docente") mostrarBloqueoAsistenciaOffline();
+  });
+  window.addEventListener("online", () => {
+    const overlay = document.getElementById("internetRequiredOverlay");
+    if (overlay) overlay.remove();
+    if (sessionStorage.getItem("sesionRol") === "docente") mostrarInformacion();
+  });
 </script>
 </body>
 </html>
