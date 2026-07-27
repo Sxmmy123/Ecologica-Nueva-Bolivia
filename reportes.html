@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background:#eef5f9; color:#213547; font-family:"Segoe UI", Arial, sans-serif; padding-top:74px; }
+    main.container-fluid { max-width:1280px; margin:0 auto; }
+    .app-navbar { background:#12355b; border-radius:0; box-shadow:0 6px 16px rgba(0,0,0,.14); display:flex; flex-wrap:wrap; gap:8px; align-items:center; left:0; margin:0; min-height:58px; padding:10px 24px; position:fixed; right:0; top:0; width:100%; z-index:1050; }
+    .app-navbar a, .app-navbar button { align-items:center; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:8px; color:#fff; display:inline-flex; gap:7px; font-weight:800; min-height:38px; padding:8px 14px; text-decoration:none; }
+    .director-navbar { align-items:center; justify-content:flex-start; }
+    .director-brand { align-items:center; color:#fff; display:inline-flex; font-weight:900; gap:8px; letter-spacing:.3px; }
+    .director-menu-btn { background:#fff!important; border-color:#fff!important; color:#12355b!important; justify-content:center; margin-left:auto; min-width:46px; }
+    .director-sidebar { background:#12355b; color:#fff; max-width:96px; }
+    .director-sidebar .offcanvas-header { border-bottom:1px solid rgba(255,255,255,.18); justify-content:center; padding:12px 8px; }
+    .director-sidebar .btn-close { filter:invert(1) grayscale(1); opacity:.9; }
+    .director-sidebar .offcanvas-body { display:flex; flex-direction:column; }
+    .director-icon-nav { align-items:center; display:flex; flex:1; flex-direction:column; gap:12px; min-height:100%; }
+    .director-icon-nav a, .director-icon-nav button { align-items:center; background:rgba(255,255,255,.12)!important; border:1px solid rgba(255,255,255,.25)!important; border-radius:14px; color:#fff!important; display:inline-flex; font-size:23px; height:54px; justify-content:center; padding:0!important; width:54px; }
+    .director-icon-nav .active { background:#fff!important; color:#12355b!important; }
+    .director-icon-nav .director-logout { background:#dc3545!important; border-color:#ffb3bd!important; margin-top:auto; }
+    .panel { background:#fff; border:1px solid #dbe7ef; border-radius:10px; box-shadow:0 6px 18px rgba(30,60,90,.08); padding:16px; }
+    .report-title { border-left:8px solid #12355b; }
+    .nav-tabs .nav-link { color:#12355b; font-weight:900; }
+    .nav-tabs .nav-link.active { border-top:4px solid #12355b; color:#12355b; }
+    .risk-high { color:#bb2d3b; font-weight:900; }
+    .risk-ok { color:#198754; font-weight:900; }
+    .course-report { border:1px solid #dbe7ef; border-left:8px solid #12355b; border-radius:10px; margin-bottom:16px; overflow:hidden; }
+    .course-head { align-items:center; background:#f8fafc; border-bottom:1px solid #dbe7ef; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; padding:12px 14px; }
+    .course-name { color:#12355b; font-weight:900; margin:0; }
+    .course-pill { background:#e8f2ff; border:1px solid #bfd4ea; border-radius:999px; color:#12355b; font-size:12px; font-weight:900; padding:5px 10px; }
+    .course-body { padding:14px; }
+    .status-stack { background:#eef2f6; border:1px solid #dbe7ef; border-radius:999px; display:flex; height:18px; min-width:180px; overflow:hidden; }
+    .status-seg { min-width:0; }
+    .seg-asistencia { background:#37b86b; }
+    .seg-atraso { background:#ffc107; }
+    .seg-permiso { background:#a56eff; }
+    .seg-falta { background:#dc3545; }
+    .attendance-stack { background:#eef2f6; border:1px solid #dbe7ef; border-radius:999px; display:flex; height:42px; min-width:260px; overflow:hidden; }
+    .attendance-stack span { align-items:center; color:#10233a; display:flex; font-size:12px; font-weight:900; justify-content:center; min-width:0; overflow:hidden; text-shadow:0 1px 0 rgba(255,255,255,.45); white-space:nowrap; }
+    .attendance-stack .seg-falta { color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.25); }
+    .task-stack { background:#eef2f6; border:1px solid #dbe7ef; border-radius:999px; display:flex; height:42px; min-width:260px; overflow:hidden; }
+    .task-stack span { align-items:center; color:#10233a; display:flex; font-size:12px; font-weight:900; justify-content:center; min-width:0; overflow:hidden; text-shadow:0 1px 0 rgba(255,255,255,.45); white-space:nowrap; }
+    .seg-presentada { background:#37b86b; }
+    .seg-no-presentada { background:#dc3545; color:#fff!important; text-shadow:0 1px 1px rgba(0,0,0,.25)!important; }
+    .grade-stack { background:#eef2f6; border:1px solid #dbe7ef; border-radius:999px; display:flex; height:30px; min-width:220px; overflow:hidden; }
+    .grade-stack span { align-items:center; color:#fff; display:flex; font-size:12px; font-weight:900; justify-content:center; min-width:0; overflow:hidden; text-shadow:0 1px 1px rgba(0,0,0,.25); white-space:nowrap; }
+    .seg-nota-alta { background:#0f766e; }
+    .seg-nota-media { background:#9fb0bf; }
+    .academic-line { display:grid; gap:8px; grid-template-columns:minmax(130px, 180px) 1fr minmax(72px, auto); margin-top:10px; align-items:center; }
+    .academic-line-label { color:#12355b; font-size:13px; font-weight:900; }
+    @media (max-width: 640px) {
+      .academic-line { grid-template-columns:1fr; }
+    }
+    .stat-card { background:#f8fafc; border:1px solid #dbe7ef; border-left:6px solid #12355b; border-radius:10px; margin-bottom:12px; padding:12px; }
+    .stat-card-head { align-items:center; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; margin-bottom:10px; }
+    .legend { display:flex; flex-wrap:wrap; gap:8px; }
+    .legend-item { align-items:center; color:#506070; display:inline-flex; font-size:12px; font-weight:800; gap:5px; }
+    .legend-dot { border-radius:50%; display:inline-block; height:10px; width:10px; }
+    .chart-card { background:#f8fafc; border:1px solid #dbe7ef; border-radius:10px; padding:14px; }
+    .chart-row { display:grid; gap:8px; grid-template-columns:minmax(110px, 170px) 1fr 52px; margin-bottom:10px; align-items:center; }
+    .chart-label { color:#12355b; font-size:13px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .chart-track { background:#e7edf4; border-radius:999px; height:18px; overflow:hidden; }
+    .chart-fill { background:linear-gradient(90deg, #37b86b, #0f766e); border-radius:999px; height:100%; min-width:2px; }
+    .chart-value { color:#12355b; font-weight:900; text-align:right; }
+    .periodo-reportes { background:#f8fafc; border:1px solid #dbe7ef; border-radius:10px; display:flex; flex-wrap:wrap; gap:6px; padding:6px; }
+    .periodo-reportes .btn { border-radius:8px; font-weight:900; min-width:126px; }
+    .periodo-reportes .btn.active { background:#12355b; border-color:#12355b; color:#fff; }
+    .grade-threshold-box { align-items:center; background:#f8fafc; border:1px solid #dbe7ef; border-radius:10px; display:flex; gap:8px; padding:6px 10px; }
+    .grade-threshold-box label { color:#12355b; font-size:12px; font-weight:900; margin:0; white-space:nowrap; }
+    .grade-threshold-box input { border:1px solid #bfd4ea; border-radius:8px; font-weight:900; max-width:76px; text-align:center; }
+    .order-actions .btn.active { background:#12355b; border-color:#12355b; color:#fff; }
+    .subject-tabs { border-bottom:1px solid #dbe7ef; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; padding-bottom:8px; }
+    .subject-tabs .btn { border-radius:8px; font-weight:900; }
+    .subject-tabs .btn.active { background:#12355b; border-color:#12355b; color:#fff; }
+    .bar-asistencia { background:linear-gradient(90deg, #37b86b, #198754); }
+    .bar-atrasos { background:linear-gradient(90deg, #ffd45a, #ffc107); }
+    .bar-licencias { background:linear-gradient(90deg, #c9a7ff, #8f5bff); }
+    .bar-faltas { background:linear-gradient(90deg, #f08a95, #dc3545); }
+  </style>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-sync.js?v=online-v54"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#12355b">
+  <link rel="icon" href="images/icon-192.png">
+  <link rel="apple-touch-icon" href="images/icon-180.png">
+  <script defer src="pwa.js?v=online-v54"></script>
+</head>
+<body>
+<script>
+  if (!["director", "admin"].includes(sessionStorage.getItem("sesionRol"))) {
+    window.location.href = "index.html";
+  }
+</script>
+
+<main class="container-fluid py-4">
+  <nav class="app-navbar director-navbar" id="appNavbar"></nav>
+
+  <section class="panel report-title mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h1 class="h3 fw-black fw-bold mb-1">Reportes</h1>
+        <div class="text-muted fw-bold">Vista general para direccion</div>
+      </div>
+      <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+        <div class="periodo-reportes" id="periodoReportes"></div>
+        <div class="grade-threshold-box">
+          <label for="notaCorteAlta">Nota alta desde</label>
+          <input id="notaCorteAlta" class="form-control form-control-sm" type="number" min="1" max="100" step="1" onchange="cambiarNotaCorteAlta(this.value)">
+        </div>
+        <button class="btn btn-outline-primary fw-bold" type="button" onclick="renderReportes()">
+          <i class="bi bi-arrow-clockwise"></i> Actualizar
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <ul class="nav nav-tabs" id="reportTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="ranking-tab" data-bs-toggle="tab" data-bs-target="#ranking-pane" type="button" role="tab">
+          <i class="bi bi-trophy-fill"></i> Clasificacion Academica
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="materias-tab" data-bs-toggle="tab" data-bs-target="#materias-pane" type="button" role="tab">
+          <i class="bi bi-book-half"></i> Por Materias
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="resumen-tab" data-bs-toggle="tab" data-bs-target="#resumen-pane" type="button" role="tab">
+          <i class="bi bi-clipboard-data-fill"></i> Resumen Asistencia
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content pt-3">
+      <div class="tab-pane fade show active" id="ranking-pane" role="tabpanel" tabindex="0">
+        <div id="reporteRanking"></div>
+      </div>
+      <div class="tab-pane fade" id="materias-pane" role="tabpanel" tabindex="0">
+        <div id="reporteMaterias"></div>
+      </div>
+      <div class="tab-pane fade" id="resumen-pane" role="tabpanel" tabindex="0">
+        <div id="reporteResumen"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function leerJSON(clave, inicial = {}) {
+    try {
+      const valor = localStorage.getItem(clave);
+      return valor ? JSON.parse(valor) : inicial;
+    } catch (error) {
+      return inicial;
+    }
+  }
+
+  function escapar(texto) {
+    return String(texto ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
+  }
+
+  function cerrarSesion() {
+    sessionStorage.clear();
+    window.location.href = "index.html";
+  }
+
+  function directorNavbarHTML() {
+    const item = (clave, href, icono, titulo) => `<a class="${clave === "reportes" ? "active" : ""}" href="${href}" title="${titulo}" aria-label="${titulo}"><i class="bi ${icono}"></i></a>`;
+    return `
+      <span class="director-brand"><i class="bi bi-eye-fill"></i> DIRECTOR</span>
+      <button class="director-menu-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#directorSidebar" aria-controls="directorSidebar" aria-label="Abrir menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="offcanvas offcanvas-end director-sidebar" tabindex="-1" id="directorSidebar" aria-labelledby="directorSidebarLabel">
+        <div class="offcanvas-header">
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body">
+          <nav class="director-icon-nav" id="directorSidebarLabel">
+            ${item("asistencias", "dia.html", "bi-clipboard2-check-fill", "Asistencias")}
+            ${item("horario", "horario.html", "bi-calendar3-week-fill", "Horarios")}
+            ${item("notas", "notas.html", "bi-journal-check", "Notas")}
+            ${item("reportes", "reportes.html", "bi-bar-chart-line-fill", "Reportes")}
+            <button class="director-logout" type="button" onclick="cerrarSesion()" title="Salir" aria-label="Salir"><i class="bi bi-power"></i></button>
+          </nav>
+        </div>
+      </div>
+    `;
+  }
+
+  const PERIODOS_REPORTE = ["1er Trimestre", "2do Trimestre", "3er Trimestre", "Total"];
+  const NOTA_MINIMA_ALTA_DEFAULT = 55;
+  let periodoReporteActual = localStorage.getItem("periodoReporteActual") || trimestreActual();
+  let ordenRankingCursos = localStorage.getItem("ordenRankingCursos") || "desc";
+  let materiaReporteActual = localStorage.getItem("materiaReporteActual") || "";
+
+  function trimestreActual() {
+    return localStorage.getItem("trimestreActual") || "1er Trimestre";
+  }
+
+  function periodoEsTotal(periodo = periodoReporteActual) {
+    return periodo === "Total";
+  }
+
+  function renderPeriodoReportes() {
+    const contenedor = document.getElementById("periodoReportes");
+    if (!contenedor) return;
+    contenedor.innerHTML = PERIODOS_REPORTE.map(periodo => `
+      <button class="btn btn-sm ${periodo === periodoReporteActual ? "active" : "btn-outline-primary"}" type="button" onclick="cambiarPeriodoReporte('${periodo}')">
+        ${periodo === "Total" ? '<i class="bi bi-layers-fill"></i> Total' : escapar(periodo)}
+      </button>
+    `).join("");
+  }
+
+  function cambiarPeriodoReporte(periodo) {
+    periodoReporteActual = PERIODOS_REPORTE.includes(periodo) ? periodo : trimestreActual();
+    localStorage.setItem("periodoReporteActual", periodoReporteActual);
+    renderReportes();
+  }
+
+  function notaCorteAlta() {
+    const valor = Number(localStorage.getItem("notaCorteAlta") || NOTA_MINIMA_ALTA_DEFAULT);
+    if (!Number.isFinite(valor)) return NOTA_MINIMA_ALTA_DEFAULT;
+    return Math.max(1, Math.min(100, Math.round(valor)));
+  }
+
+  function renderNotaCorteAlta() {
+    const input = document.getElementById("notaCorteAlta");
+    if (input) input.value = notaCorteAlta();
+  }
+
+  function cambiarNotaCorteAlta(valor) {
+    const limpio = Math.max(1, Math.min(100, Math.round(Number(valor) || NOTA_MINIMA_ALTA_DEFAULT)));
+    localStorage.setItem("notaCorteAlta", String(limpio));
+    renderReportes();
+  }
+
+  function cursosVisibles() {
+    const alumnos = leerJSON("alumnos", {});
+    const cursos = leerJSON("cursos", []);
+    return [...new Set([...cursos, ...Object.keys(alumnos)])].filter(Boolean);
+  }
+
+  function actividadDelPeriodo(actividad, periodo = periodoReporteActual) {
+    return periodoEsTotal(periodo) || !actividad.trimestre || actividad.trimestre === periodo;
+  }
+
+  function actividadesCurso(curso, periodo = periodoReporteActual) {
+    return leerJSON("actividades", [])
+      .filter(actividad => actividad.curso === curso)
+      .filter(actividad => actividad.titulo && actividad.materia)
+      .filter(actividad => actividadDelPeriodo(actividad, periodo));
+  }
+
+  function notaActividad(actividad, alumno) {
+    const notas = leerJSON("notas", {});
+    const trimestre = actividad.trimestre || trimestreActual();
+    return notas?.[actividad.curso]?.[trimestre]?.[actividad.materia]?.[actividad.titulo]?.alumnos?.[alumno] || null;
+  }
+
+  function resumenTareasPorCurso() {
+    const alumnosPorCurso = leerJSON("alumnos", {});
+    const resumen = {};
+    cursosVisibles().forEach(curso => {
+      const actividades = actividadesCurso(curso, periodoReporteActual);
+      resumen[curso] = (alumnosPorCurso[curso] || []).map(alumno => {
+        const presentadas = [];
+        const faltantes = [];
+        actividades.forEach(actividad => {
+          const nota = notaActividad(actividad, alumno);
+          if (nota) presentadas.push({ actividad, nota });
+          else faltantes.push({ actividad });
+        });
+        const total = actividades.length;
+        const porcentaje = total ? Math.round((presentadas.length * 100) / total) : 0;
+        return { curso, alumno, total, presentadas, faltantes, porcentaje };
+      });
+    });
+    return resumen;
+  }
+
+  function resumenCursosPorTareas(resumenCursos) {
+    return Object.entries(resumenCursos).map(([curso, alumnos]) => {
+      const total = alumnos.reduce((acc, item) => acc + item.total, 0);
+      const presentadas = alumnos.reduce((acc, item) => acc + item.presentadas.length, 0);
+      const faltantes = alumnos.reduce((acc, item) => acc + item.faltantes.length, 0);
+      const porcentaje = total ? Math.round((presentadas * 100) / total) : 0;
+      const notas = alumnos
+        .flatMap(item => item.presentadas.map(presentada => Number(presentada.nota?.nota100 ?? presentada.nota?.nota ?? presentada.nota)))
+        .filter(nota => Number.isFinite(nota));
+      const corteAlta = notaCorteAlta();
+      const notasAltas = notas.filter(nota => nota >= corteAlta).length;
+      const porcentajeNotasAltas = notas.length ? Math.round((notasAltas * 100) / notas.length) : 0;
+      const promedioNotas = notas.length ? Math.round(notas.reduce((acc, nota) => acc + nota, 0) / notas.length) : 0;
+      return { curso, total, presentadas, faltantes, porcentaje, alumnos, notasAltas, notasCalificadas: notas.length, porcentajeNotasAltas, promedioNotas };
+    }).filter(item => item.total > 0);
+  }
+
+  function resumenNotasPorMateria(resumenCursos) {
+    const materias = {};
+    Object.entries(resumenCursos).forEach(([curso, alumnos]) => {
+      alumnos.forEach(alumno => {
+        alumno.presentadas.forEach(item => {
+          const materia = item.actividad?.materia || "Sin materia";
+          const nota = Number(item.nota?.nota100 ?? item.nota?.nota ?? item.nota);
+          if (!Number.isFinite(nota)) return;
+          if (!materias[materia]) materias[materia] = {};
+          if (!materias[materia][curso]) materias[materia][curso] = { curso, materia, notas: [], altas: 0, bajas: 0 };
+          materias[materia][curso].notas.push(nota);
+          if (nota >= notaCorteAlta()) materias[materia][curso].altas++;
+          else materias[materia][curso].bajas++;
+        });
+      });
+    });
+
+    return Object.entries(materias)
+      .map(([materia, cursos]) => ({
+        materia,
+        cursos: Object.values(cursos).map(item => {
+          const total = item.notas.length;
+          const altasPct = total ? Math.round((item.altas * 100) / total) : 0;
+          const bajasPct = total ? 100 - altasPct : 0;
+          const promedio = total ? Math.round(item.notas.reduce((acc, nota) => acc + nota, 0) / total) : 0;
+          return { ...item, total, altasPct, bajasPct, promedio };
+        }).sort((a, b) => b.altasPct - a.altasPct || b.promedio - a.promedio)
+      }))
+      .filter(item => item.cursos.length)
+      .sort((a, b) => a.materia.localeCompare(b.materia));
+  }
+
+  function renderRanking(resumenCursos) {
+    const corteAlta = notaCorteAlta();
+    const cursos = resumenCursosPorTareas(resumenCursos)
+      .sort((a, b) => ordenRankingCursos === "desc"
+        ? b.porcentaje - a.porcentaje || b.presentadas - a.presentadas
+        : a.porcentaje - b.porcentaje || b.faltantes - a.faltantes
+      );
+    const contenedor = document.getElementById("reporteRanking");
+    contenedor.innerHTML = `
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h3 class="h5 fw-bold mb-1">Porcentaje de tareas por curso</h3>
+          <div class="text-muted fw-bold small">${escapar(periodoReporteActual)}</div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot seg-presentada"></span>Presentadas</span>
+            <span class="legend-item"><span class="legend-dot seg-no-presentada"></span>No presentadas</span>
+            <span class="legend-item"><span class="legend-dot seg-nota-alta"></span>Notas desde ${corteAlta}</span>
+          </div>
+          <div class="btn-group order-actions" role="group" aria-label="Orden ranking">
+            <button class="btn btn-outline-primary btn-sm ${ordenRankingCursos === "desc" ? "active" : ""}" type="button" onclick="cambiarOrdenRanking('desc')">
+              <i class="bi bi-sort-down"></i> Mayor a menor
+            </button>
+            <button class="btn btn-outline-primary btn-sm ${ordenRankingCursos === "asc" ? "active" : ""}" type="button" onclick="cambiarOrdenRanking('asc')">
+              <i class="bi bi-sort-up"></i> Menor a mayor
+            </button>
+          </div>
+        </div>
+      </div>
+      ${cursos.length ? cursos.map((item, index) => {
+        const presentadasPct = item.total ? Math.round((item.presentadas * 100) / item.total) : 0;
+        const faltantesPct = item.total ? 100 - presentadasPct : 0;
+        const notasAltasPct = item.porcentajeNotasAltas || 0;
+        const notasNoAltasPct = item.notasCalificadas ? 100 - notasAltasPct : 0;
+        return `
+          <div class="stat-card">
+            <div class="stat-card-head">
+              <h4 class="h6 fw-bold mb-0">${index + 1}. ${escapar(item.curso)}</h4>
+              <span class="course-pill">${item.total} tareas totales</span>
+            </div>
+            <div class="academic-line">
+              <div class="academic-line-label">Tareas</div>
+              <div class="task-stack">
+                <span class="seg-presentada" style="width:${presentadasPct}%" title="Presentadas: ${presentadasPct}%">${presentadasPct >= 7 ? `${presentadasPct}%` : ""}</span>
+                <span class="seg-no-presentada" style="width:${faltantesPct}%" title="No presentadas: ${faltantesPct}%">${faltantesPct >= 7 ? `${faltantesPct}%` : ""}</span>
+              </div>
+              <strong>${presentadasPct}%</strong>
+            </div>
+            <div class="academic-line">
+              <div class="academic-line-label">Notas desde ${corteAlta}</div>
+              <div class="grade-stack">
+                <span class="seg-nota-alta" style="width:${notasAltasPct}%" title="Notas desde ${corteAlta}: ${notasAltasPct}%">${notasAltasPct >= 9 ? `${notasAltasPct}%` : ""}</span>
+                <span class="seg-nota-media" style="width:${notasNoAltasPct}%" title="Notas menores a ${corteAlta}: ${notasNoAltasPct}%">${notasNoAltasPct >= 9 ? `${notasNoAltasPct}%` : ""}</span>
+              </div>
+              <strong>Prom. ${item.promedioNotas || 0}</strong>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2 small fw-bold text-muted">
+              <span>Presentadas: ${item.presentadas}</span>
+              <span>No presentadas: ${item.faltantes}</span>
+              <span>Notas desde ${corteAlta}: ${item.notasAltas}/${item.notasCalificadas}</span>
+            </div>
+          </div>
+        `;
+      }).join("") : '<div class="alert alert-info mb-0">Todavia no hay tareas calificadas para armar la clasificacion academica.</div>'}
+    `;
+  }
+
+  function cambiarOrdenRanking(orden) {
+    ordenRankingCursos = orden === "asc" ? "asc" : "desc";
+    localStorage.setItem("ordenRankingCursos", ordenRankingCursos);
+    renderReportes();
+  }
+
+  function renderMaterias(resumenCursos) {
+    const corteAlta = notaCorteAlta();
+    const materias = resumenNotasPorMateria(resumenCursos);
+    const contenedor = document.getElementById("reporteMaterias");
+    if (!materias.length) {
+      contenedor.innerHTML = '<div class="alert alert-info mb-0">Todavia no hay notas calificadas para comparar por materia.</div>';
+      return;
+    }
+    if (!materiaReporteActual || !materias.some(item => item.materia === materiaReporteActual)) {
+      materiaReporteActual = materias[0].materia;
+      localStorage.setItem("materiaReporteActual", materiaReporteActual);
+    }
+    const seleccionada = materias.find(item => item.materia === materiaReporteActual);
+
+    contenedor.innerHTML = `
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h3 class="h5 fw-bold mb-1">Rendimiento por materia</h3>
+          <div class="text-muted fw-bold small">${escapar(periodoReporteActual)}</div>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot seg-nota-alta"></span>Notas desde ${corteAlta}</span>
+          <span class="legend-item"><span class="legend-dot seg-no-presentada"></span>Menores a ${corteAlta}</span>
+        </div>
+      </div>
+      <div class="subject-tabs">
+        ${materias.map(grupo => `
+          <button class="btn btn-outline-primary btn-sm ${grupo.materia === materiaReporteActual ? "active" : ""}" type="button" onclick="seleccionarMateriaReporte('${String(grupo.materia).replaceAll("\\", "\\\\").replaceAll("'", "\\'")}')">
+            ${escapar(grupo.materia)}
+          </button>
+        `).join("")}
+      </div>
+      <section class="stat-card">
+        <div class="stat-card-head">
+          <h4 class="h5 fw-bold mb-0">${escapar(seleccionada.materia)}</h4>
+          <span class="course-pill">${seleccionada.cursos.length} cursos con notas</span>
+        </div>
+        ${seleccionada.cursos.map(item => `
+          <div class="academic-line">
+            <div class="academic-line-label">${escapar(item.curso)}</div>
+            <div class="grade-stack">
+              <span class="seg-nota-alta" style="width:${item.altasPct}%" title="Notas desde ${corteAlta}: ${item.altasPct}%">${item.altasPct >= 9 ? `${item.altasPct}%` : ""}</span>
+              <span class="seg-no-presentada" style="width:${item.bajasPct}%" title="Menores a ${corteAlta}: ${item.bajasPct}%">${item.bajasPct >= 9 ? `${item.bajasPct}%` : ""}</span>
+            </div>
+            <strong>Prom. ${item.promedio}</strong>
+          </div>
+        `).join("")}
+      </section>
+    `;
+  }
+
+  function seleccionarMateriaReporte(materia) {
+    materiaReporteActual = materia;
+    localStorage.setItem("materiaReporteActual", materiaReporteActual);
+    renderReportes();
+  }
+
+  function estadoNormal(estado) {
+    return String(estado || "blanco").toLowerCase();
+  }
+
+  function estadoClave(estado) {
+    const normal = estadoNormal(estado);
+    if (normal === "verde") return "asistencia";
+    if (normal === "amarillo") return "atrasos";
+    if (normal === "morado") return "licencias";
+    if (normal === "blanco" || normal === "f" || normal === "falta" || normal === "rojo") return "faltas";
+    return null;
+  }
+
+  function parseRegistro(clave, estado) {
+    const partes = String(clave).split("|");
+    if (partes.length < 3) return null;
+    return { fecha: partes[0], curso: partes[1], alumno: partes.slice(2).join("|"), estado: estado || "blanco" };
+  }
+
+  function registroDentroPeriodo(fecha) {
+    if (periodoEsTotal()) return true;
+    const trimestresAsistencia = leerJSON("trimestresAsistencia", {});
+    const trimestreFecha = trimestresAsistencia[fecha] || "";
+    return trimestreFecha === periodoReporteActual;
+  }
+
+  function resumenAsistenciasPorCurso() {
+    const alumnosPorCurso = leerJSON("alumnos", {});
+    const asistencias = leerJSON("asistencias", {});
+    const resumen = {};
+    cursosVisibles().forEach(curso => resumen[curso] = { asistencia:0, atrasos:0, licencias:0, faltas:0, total:0 });
+
+    const registrosPorDia = {};
+    Object.entries(asistencias).forEach(([clave, estado]) => {
+      const reg = parseRegistro(clave, estado);
+      if (!reg || !alumnosPorCurso[reg.curso]) return;
+      if (!registroDentroPeriodo(reg.fecha)) return;
+      const id = `${reg.curso}|${reg.fecha}`;
+      registrosPorDia[id] = true;
+    });
+
+    Object.keys(registrosPorDia).forEach(id => {
+      const [curso, fecha] = id.split("|");
+      const alumnos = alumnosPorCurso[curso] || [];
+      alumnos.forEach(alumno => {
+        const estado = asistencias[`${fecha}|${curso}|${alumno}`] || "blanco";
+        const clave = estadoClave(estado);
+        if (!clave) return;
+        resumen[curso][clave]++;
+        resumen[curso].total++;
+      });
+    });
+    return resumen;
+  }
+
+  function renderResumen() {
+    const resumen = resumenAsistenciasPorCurso();
+    const estados = [
+      { key:"asistencia", label:"Asistencia", icon:"bi-check-circle-fill", seg:"seg-asistencia" },
+      { key:"atrasos", label:"Atrasos", icon:"bi-clock-fill", seg:"seg-atraso" },
+      { key:"licencias", label:"Licencias", icon:"bi-person-check-fill", seg:"seg-permiso" },
+      { key:"faltas", label:"Faltas", icon:"bi-x-circle-fill", seg:"seg-falta" }
+    ];
+    const cursos = Object.keys(resumen);
+    if (!cursos.length) {
+      document.getElementById("reporteResumen").innerHTML = '<div class="alert alert-info mb-0">No hay datos de asistencia para resumir.</div>';
+      return;
+    }
+
+    const filas = cursos.map(curso => {
+      const item = resumen[curso];
+      const total = item.total || 0;
+      const porcentajes = {};
+      estados.forEach(estado => {
+        porcentajes[estado.key] = total ? Math.round(((item[estado.key] || 0) * 100) / total) : 0;
+      });
+      return { curso, item, total, porcentajes };
+    }).sort((a, b) => b.porcentajes.asistencia - a.porcentajes.asistencia);
+
+    document.getElementById("reporteResumen").innerHTML = `
+      <section class="chart-card mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div>
+            <h3 class="h5 fw-bold mb-1">Porcentaje de asistencia por curso</h3>
+            <div class="text-muted fw-bold small">${escapar(periodoReporteActual)}</div>
+          </div>
+          <div class="legend">
+            ${estados.map(estado => `<span class="legend-item"><span class="legend-dot ${estado.seg}"></span>${estado.label}</span>`).join("")}
+          </div>
+        </div>
+        ${filas.map(({ curso, total, porcentajes }) => `
+          <div class="stat-card">
+            <div class="stat-card-head">
+              <h4 class="h6 fw-bold mb-0">${escapar(curso)}</h4>
+              <span class="course-pill">${total} registros</span>
+            </div>
+            <div class="attendance-stack">
+              ${estados.map(estado => {
+                const porcentaje = porcentajes[estado.key];
+                return `<span class="${estado.seg}" style="width:${porcentaje}%" title="${estado.label}: ${porcentaje}%">${porcentaje >= 7 ? `${porcentaje}%` : ""}</span>`;
+              }).join("")}
+            </div>
+          </div>
+        `).join("")}
+      </section>
+    `;
+  }
+
+  function renderReportes() {
+    renderPeriodoReportes();
+    renderNotaCorteAlta();
+    const resumenCursos = resumenTareasPorCurso();
+    renderRanking(resumenCursos);
+    renderMaterias(resumenCursos);
+    renderResumen();
+  }
+
+  document.getElementById("appNavbar").innerHTML = directorNavbarHTML();
+  renderReportes();
+</script>
+</body>
+</html>
