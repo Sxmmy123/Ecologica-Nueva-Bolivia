@@ -45,6 +45,7 @@
   };
 
   const TEACHER_SYNC_KEYS = [
+    "docentes",
     "asistencias",
     "trimestresAsistencia",
     "asistenciaEdiciones",
@@ -734,6 +735,179 @@
     return Object.values(groups);
   }
 
+  function activityDocId(activity) {
+    return slug([
+      normalizeCourseName(activity?.curso || "general"),
+      activity?.materia || "sin_materia",
+      activity?.trimestre || "sin_trimestre",
+      activity?.fecha || "sin_fecha",
+      activity?.tipo || "actividad",
+      activity?.titulo || "sin_titulo"
+    ].join("|"));
+  }
+
+  function activityScopeId(activity) {
+    return slug([
+      normalizeCourseName(activity?.curso || "general"),
+      activity?.materia || "sin_materia"
+    ].join("|"));
+  }
+
+  function recordsForActivities(value, updatedAt) {
+    const parsed = parseJSON(value, []);
+    if (!Array.isArray(parsed)) return [];
+    const scopes = {};
+    const records = parsed.map(activity => {
+      const course = normalizeCourseName(activity?.curso || "general");
+      const normalized = { ...activity, curso: course };
+      const id = activityDocId(normalized);
+      const scopeId = activityScopeId(normalized);
+      if (!scopes[scopeId]) scopes[scopeId] = { course, materia: normalized.materia || "", ids: [] };
+      scopes[scopeId].ids.push(id);
+      return {
+        collection: "actividades_detalle",
+        id,
+        data: {
+          key: "actividades",
+          scopeId,
+          course,
+          materia: normalized.materia || "",
+          value: stringify(normalized),
+          operation: "set",
+          updatedAt
+        }
+      };
+    });
+
+    const indexes = Object.entries(scopes).map(([id, scope]) => ({
+      collection: "actividades_index",
+      id,
+      data: {
+        key: "actividades",
+        scopeId: id,
+        course: scope.course,
+        materia: scope.materia,
+        activeIds: stringify([...new Set(scope.ids)]),
+        operation: "set",
+        updatedAt
+      }
+    }));
+
+    return [...indexes, ...records];
+  }
+
+  function noteDocId(course, trimestre, materia, titulo) {
+    return slug([course || "general", trimestre || "sin_trimestre", materia || "sin_materia", titulo || "sin_titulo"].join("|"));
+  }
+
+  function noteScopeId(course, trimestre, materia) {
+    return slug([course || "general", trimestre || "sin_trimestre", materia || "sin_materia"].join("|"));
+  }
+
+  function recordsForNotes(value, updatedAt) {
+    const parsed = parseJSON(value, {});
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    const records = [];
+    const scopes = {};
+
+    Object.entries(parsed).forEach(([courseRaw, trimestres]) => {
+      const course = normalizeCourseName(courseRaw);
+      if (!trimestres || typeof trimestres !== "object" || Array.isArray(trimestres)) return;
+      Object.entries(trimestres).forEach(([trimestre, materias]) => {
+        if (!materias || typeof materias !== "object" || Array.isArray(materias)) return;
+        Object.entries(materias).forEach(([materia, actividades]) => {
+          if (!actividades || typeof actividades !== "object" || Array.isArray(actividades)) return;
+          const scopeId = noteScopeId(course, trimestre, materia);
+          if (!scopes[scopeId]) scopes[scopeId] = { course, trimestre, materia, ids: [] };
+          Object.entries(actividades).forEach(([titulo, registro]) => {
+            const id = noteDocId(course, trimestre, materia, titulo);
+            scopes[scopeId].ids.push(id);
+            records.push({
+              collection: "notas_detalle",
+              id,
+              data: {
+                key: "notas",
+                scopeId,
+                course,
+                trimestre,
+                materia,
+                titulo,
+                value: stringify(registro),
+                operation: "set",
+                updatedAt
+              }
+            });
+          });
+        });
+      });
+    });
+
+    const indexes = Object.entries(scopes).map(([id, scope]) => ({
+      collection: "notas_index",
+      id,
+      data: {
+        key: "notas",
+        scopeId: id,
+        course: scope.course,
+        trimestre: scope.trimestre,
+        materia: scope.materia,
+        activeIds: stringify([...new Set(scope.ids)]),
+        operation: "set",
+        updatedAt
+      }
+    }));
+
+    return [...indexes, ...records];
+  }
+
+  function recordsForAttendance(value, updatedAt) {
+    const parsed = parseJSON(value, {});
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    return Object.entries(parsed).map(([entryKey, estado]) => {
+      const parts = String(entryKey).split("|");
+      const fecha = parts[0] || "";
+      const course = normalizeCourseName(parts[1] || "general");
+      const alumno = parts.slice(2).join("|");
+      return {
+        collection: "asistencias_alumno",
+        id: slug([fecha, course, alumno].join("|")),
+        data: {
+          key: "asistencias",
+          entryKey: [fecha, course, alumno].join("|"),
+          fecha,
+          course,
+          alumno,
+          value: estado,
+          operation: "set",
+          updatedAt
+        }
+      };
+    });
+  }
+
+  function recordsForAttendanceEdits(value, updatedAt) {
+    const parsed = parseJSON(value, {});
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    return Object.entries(parsed).map(([entryKey, edits]) => {
+      const parts = String(entryKey).split("|");
+      const fecha = parts[0] || "";
+      const course = normalizeCourseName(parts[1] || "general");
+      return {
+        collection: "asistencia_ediciones_detalle",
+        id: slug([fecha, course].join("|")),
+        data: {
+          key: "asistenciaEdiciones",
+          entryKey: [fecha, course].join("|"),
+          fecha,
+          course,
+          value: stringify(edits),
+          operation: "set",
+          updatedAt
+        }
+      };
+    });
+  }
+
   function recordsForItem(item) {
     const key = canonicalKey(item.key);
     const updatedAt = item.updatedAt || Date.now();
@@ -747,6 +921,11 @@
       const spec = SINGLE_KEYS[key];
       return [{ collection: spec.collection, id: spec.doc, data: { key, value, operation: "set", updatedAt } }];
     }
+
+    if (key === "actividades") return recordsForActivities(value, updatedAt);
+    if (key === "notas") return recordsForNotes(value, updatedAt);
+    if (key === "asistencias") return recordsForAttendance(value, updatedAt);
+    if (key === "asistenciaEdiciones") return recordsForAttendanceEdits(value, updatedAt);
 
     if (COURSE_OBJECT_KEYS[key]) {
       return groupObjectByCourse(value).map(group => ({
@@ -762,20 +941,6 @@
         id: slug(group.course),
         data: { key, course: group.course, value: stringify(group.value), operation: "set", updatedAt }
       }));
-    }
-
-    if (key === "actividades") {
-      const fullRecord = {
-        collection: "actividades",
-        id: "todos",
-        data: { key: "actividades", value, operation: "set", updatedAt }
-      };
-      const groupedRecords = groupActivities(value).map(group => ({
-        collection: group.collection,
-        id: slug(group.course),
-        data: { key: "actividades", course: group.course, value: stringify(group.value), operation: "set", updatedAt }
-      }));
-      return [fullRecord, ...groupedRecords];
     }
 
     const storageKey = storageCourseKey(key);
@@ -986,19 +1151,104 @@
     next[key] = { value: stringify(obj), updatedAt };
   }
 
+  async function pullDetailedNotes(next) {
+    const detailDocs = await readCollection("notas_detalle");
+    if (!detailDocs.length) return false;
+    const indexDocs = await readCollection("notas_index");
+    const activeByScope = {};
+    indexDocs.forEach(({ data }) => {
+      activeByScope[data.scopeId] = new Set(parseJSON(data.activeIds, []));
+    });
+
+    const current = parseJSON(next.notas?.value, {});
+    const notes = current && typeof current === "object" && !Array.isArray(current) ? current : {};
+    let updatedAt = Number(next.notas?.updatedAt || 0);
+
+    detailDocs.forEach(({ id, data }) => {
+      const scopeId = data.scopeId || noteScopeId(data.course, data.trimestre, data.materia);
+      if (activeByScope[scopeId] && !activeByScope[scopeId].has(id)) return;
+      const course = normalizeCourseName(data.course || "general");
+      const trimestre = data.trimestre || "1er Trimestre";
+      const materia = data.materia || "Sin materia";
+      const titulo = data.titulo || "Sin titulo";
+      if (!notes[course]) notes[course] = {};
+      if (!notes[course][trimestre]) notes[course][trimestre] = {};
+      if (!notes[course][trimestre][materia]) notes[course][trimestre][materia] = {};
+      notes[course][trimestre][materia][titulo] = parseJSON(data.value, {});
+      updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
+    });
+
+    indexDocs.forEach(({ data }) => {
+      const course = normalizeCourseName(data.course || "general");
+      const trimestre = data.trimestre || "1er Trimestre";
+      const materia = data.materia || "Sin materia";
+      const activeIds = activeByScope[data.scopeId] || new Set();
+      if (!notes?.[course]?.[trimestre]?.[materia]) return;
+      Object.keys(notes[course][trimestre][materia]).forEach(titulo => {
+        if (!activeIds.has(noteDocId(course, trimestre, materia, titulo))) delete notes[course][trimestre][materia][titulo];
+      });
+      if (!Object.keys(notes[course][trimestre][materia]).length) delete notes[course][trimestre][materia];
+      if (notes[course][trimestre] && !Object.keys(notes[course][trimestre]).length) delete notes[course][trimestre];
+      if (notes[course] && !Object.keys(notes[course]).length) delete notes[course];
+      updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
+    });
+
+    next.notas = { value: stringify(notes), updatedAt };
+    return true;
+  }
+
   async function pullCourseEntries(next, key, collectionName) {
     const docs = await readCollection(collectionName);
-    if (!docs.length) return;
     const obj = {};
     let updatedAt = 0;
     docs.forEach(({ data }) => {
       Object.assign(obj, parseJSON(data.value, {}));
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
+
+    if (key === "asistencias") {
+      const detailDocs = await readCollection("asistencias_alumno");
+      detailDocs.forEach(({ data }) => {
+        const entryKey = data.entryKey || [data.fecha, data.course, data.alumno].join("|");
+        obj[entryKey] = data.value || "blanco";
+        updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
+      });
+    }
+
+    if (key === "asistenciaEdiciones") {
+      const detailDocs = await readCollection("asistencia_ediciones_detalle");
+      detailDocs.forEach(({ data }) => {
+        const entryKey = data.entryKey || [data.fecha, data.course].join("|");
+        obj[entryKey] = parseJSON(data.value, []);
+        updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
+      });
+    }
+
+    if (!docs.length && !Object.keys(obj).length) return;
     next[key] = { value: stringify(obj), updatedAt };
   }
 
   async function pullActivities(next) {
+    const detailDocs = await readCollection("actividades_detalle");
+    if (detailDocs.length) {
+      const indexDocs = await readCollection("actividades_index");
+      const activeByScope = {};
+      indexDocs.forEach(({ data }) => {
+        activeByScope[data.scopeId] = new Set(parseJSON(data.activeIds, []));
+      });
+      const activities = [];
+      let updatedAt = 0;
+      detailDocs.forEach(({ id, data }) => {
+        const scopeId = data.scopeId || activityScopeId(parseJSON(data.value, {}));
+        if (activeByScope[scopeId] && !activeByScope[scopeId].has(id)) return;
+        const activity = parseJSON(data.value, null);
+        if (activity) activities.push(activity);
+        updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
+      });
+      next.actividades = { value: stringify(activities), updatedAt };
+      return;
+    }
+
     const full = await baseRef.collection("actividades").doc("todos").get();
     if (full.exists) {
       const data = full.data() || {};
@@ -1058,6 +1308,7 @@
     const next = {};
     await pullSingles(next);
     for (const [key, collection] of Object.entries(COURSE_OBJECT_KEYS)) await pullCourseObject(next, key, collection);
+    await pullDetailedNotes(next);
     for (const [key, collection] of Object.entries(COURSE_ENTRY_KEYS)) await pullCourseEntries(next, key, collection);
     await pullActivities(next);
     for (const spec of COURSE_STORAGE_PREFIXES) await pullStorageCourse(next, spec.prefix, spec.collection);
@@ -1185,14 +1436,79 @@
 
   window.firebaseMarkPackage = function (key) {
     const normalized = canonicalKey(key);
-    if (!shouldSync(normalized) || !canWriteKey(normalized)) return false;
+    if (!shouldSync(normalized) || !canWriteKey(normalized)) return Promise.resolve(false);
     const updatedAt = Date.now();
-    writeOnlineChange({
+    return writeOnlineChange({
       key: normalized,
       value: rawGetItem(normalized),
       operation: rawGetItem(normalized) === null ? "remove" : "set",
       updatedAt
     });
+  };
+
+  window.firebaseForgetActivity = async function (activity) {
+    if (!activity || !canWriteKey("actividades")) return false;
+    if (!navigator.onLine) {
+      notifyWriteBlocked("internet");
+      return false;
+    }
+    if (!baseRef && !(await initFirebase())) return false;
+    const normalized = { ...activity, curso: normalizeCourseName(activity.curso || "general") };
+    const id = activityDocId(normalized);
+    const scopeId = activityScopeId(normalized);
+    const current = parseJSON(rawGetItem("actividades"), []);
+    const activeIds = Array.isArray(current)
+      ? current
+          .filter(item => activityScopeId(item) === scopeId)
+          .map(activityDocId)
+      : [];
+    const updatedAt = Date.now();
+    await baseRef.collection("actividades_detalle").doc(id).delete();
+    await baseRef.collection("actividades_index").doc(scopeId).set({
+      key: "actividades",
+      scopeId,
+      course: normalized.curso,
+      materia: normalized.materia || "",
+      activeIds: stringify([...new Set(activeIds)]),
+      operation: "set",
+      updatedAt,
+      deviceId: deviceId(),
+      role: currentRole(),
+      serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setPackageMeta("actividades", updatedAt, "synced");
+    return true;
+  };
+
+  window.firebaseForgetNote = async function (courseRaw, trimestre, materia, titulo) {
+    if (!canWriteKey("notas")) return false;
+    if (!navigator.onLine) {
+      notifyWriteBlocked("internet");
+      return false;
+    }
+    if (!baseRef && !(await initFirebase())) return false;
+    const course = normalizeCourseName(courseRaw || "general");
+    const id = noteDocId(course, trimestre, materia, titulo);
+    const scopeId = noteScopeId(course, trimestre, materia);
+    const current = parseJSON(rawGetItem("notas"), {});
+    const materiaNotas = current?.[course]?.[trimestre]?.[materia] || {};
+    const activeIds = Object.keys(materiaNotas).map(title => noteDocId(course, trimestre, materia, title));
+    const updatedAt = Date.now();
+    await baseRef.collection("notas_detalle").doc(id).delete();
+    await baseRef.collection("notas_index").doc(scopeId).set({
+      key: "notas",
+      scopeId,
+      course,
+      trimestre,
+      materia,
+      activeIds: stringify([...new Set(activeIds)]),
+      operation: "set",
+      updatedAt,
+      deviceId: deviceId(),
+      role: currentRole(),
+      serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setPackageMeta("notas", updatedAt, "synced");
     return true;
   };
 
