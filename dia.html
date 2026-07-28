@@ -150,6 +150,29 @@
       color: #fff;
       transform: scale(1.04);
     }
+    .attendance-mode-switch {
+      background:#eef5ff;
+      border:1px solid #cfe2ff;
+      border-radius:999px;
+      display:inline-flex;
+      gap:3px;
+      padding:3px;
+    }
+    .attendance-mode-switch button {
+      background:transparent;
+      border:0;
+      border-radius:999px;
+      color:#12355b;
+      font-size:12px;
+      font-weight:900;
+      padding:7px 10px;
+      white-space:nowrap;
+    }
+    .attendance-mode-switch button.active {
+      background:#12355b;
+      color:#fff;
+      box-shadow:0 4px 10px rgba(18,53,91,.18);
+    }
 
     #slideContainer > .d-flex.justify-content-between.mb-3:first-of-type {
       display: none !important;
@@ -236,7 +259,8 @@
     }
     body.readonly-attendance #slideContainer > h6,
     body.readonly-attendance #slideContainer > .d-flex.justify-content-between.mb-3,
-    body.readonly-attendance #slideContainer > .leyenda {
+    body.readonly-attendance #slideContainer > .leyenda,
+    body.summary-attendance #slideContainer > .d-flex.justify-content-between.mb-3 {
       display: none !important;
     }
 
@@ -276,12 +300,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v76"></script>
+  <script src="firebase-sync.js?v=online-v78"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v76"></script>
+  <script defer src="pwa.js?v=online-v78"></script>
 </head>
 <body>
 <script>
@@ -378,6 +402,46 @@
 
   function etiquetaTrimestre(valor) {
     return { "1er Trimestre": "1er trimestre", "2do Trimestre": "2do trimestre", "3er Trimestre": "3er trimestre" }[valor] || valor;
+  }
+
+  function esDocente() {
+    return sessionStorage.getItem("sesionRol") === "docente";
+  }
+
+  function modoAsistenciaDocente() {
+    return localStorage.getItem("modoAsistenciaDocente") || "registro";
+  }
+
+  function esModoResumenDocente() {
+    return esDocente() && modoAsistenciaDocente() === "resumen";
+  }
+
+  function actualizarClaseModoAsistencia() {
+    document.body.classList.toggle("readonly-attendance", esVistaSoloLectura());
+    document.body.classList.toggle("summary-attendance", esModoResumenDocente());
+  }
+
+  function controlesModoAsistenciaDocente() {
+    if (!esDocente()) return "";
+    const modo = modoAsistenciaDocente();
+    return `
+      <div class="attendance-mode-switch" aria-label="Modo de asistencia">
+        <button type="button" class="${modo === "registro" ? "active" : ""}" onclick="cambiarModoAsistenciaDocente('registro')">
+          <i class="bi bi-pencil-square"></i> Tomar lista
+        </button>
+        <button type="button" class="${modo === "resumen" ? "active" : ""}" onclick="cambiarModoAsistenciaDocente('resumen')">
+          <i class="bi bi-table"></i> Resumen
+        </button>
+      </div>
+    `;
+  }
+
+  function cambiarModoAsistenciaDocente(modo) {
+    localStorage.setItem("modoAsistenciaDocente", modo);
+    actualizarClaseModoAsistencia();
+    renderTrimestrePanel();
+    if (modo === "resumen") mostrarAsistenciaMensual();
+    else mostrarInformacion();
   }
 
   function etiquetaCursoCorta(curso) {
@@ -500,7 +564,7 @@
     bootstrap.Modal.getInstance(document.getElementById("modalTrimestre"))?.hide();
     renderTrimestrePanel();
     renderModalTrimestre();
-    if (esVistaSoloLectura()) mostrarAsistenciaMensual();
+    if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
     else mostrarInformacion();
   }
 
@@ -512,6 +576,7 @@
         <div class="label"><i class="bi bi-bookmark-check-fill"></i> Trimestre activo</div>
         <div class="small text-muted fw-bold">${soloLectura ? `Visualizando registros de ${etiquetaTrimestre(actual)}.` : `Los registros nuevos se guardaran en ${etiquetaTrimestre(actual)}.`}</div>
       </div>
+      ${controlesModoAsistenciaDocente()}
       <button class="trimestre-current" type="button" data-bs-toggle="modal" data-bs-target="#modalTrimestre">
         <i class="bi bi-pencil-square"></i> ${etiquetaTrimestre(actual)}
       </button>
@@ -742,9 +807,7 @@
     if (window.showInternetRequired) window.showInternetRequired("Conecte a internet para tomar asistencia.");
   }
 
-  if (esVistaSoloLectura()) {
-    document.body.classList.add("readonly-attendance");
-  }
+  actualizarClaseModoAsistencia();
 
   function etiquetaEstado(estado) {
     return {
@@ -856,7 +919,7 @@
   function seleccionarCursoResumen(curso) {
     cursoVistaActual = curso;
     localStorage.setItem("cursoSeleccionado", curso);
-    if (esVistaSoloLectura()) mostrarAsistenciaMensual();
+    if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
     else mostrarInformacion();
   }
 
@@ -875,13 +938,19 @@
   }
 
   function mostrarAsistenciaMensual() {
+    actualizarClaseModoAsistencia();
     document.querySelectorAll("#slideContainer > .d-flex.justify-content-between.mb-3").forEach(el => el.style.display = "none");
     const alumnosPorCurso = JSON.parse(localStorage.getItem("alumnos")) || {};
     const asistencias = JSON.parse(localStorage.getItem("asistencias")) || {};
     const trimestresAsistencia = JSON.parse(localStorage.getItem("trimestresAsistencia")) || {};
     const coloresCursos = JSON.parse(localStorage.getItem("cursoColores")) || {};
     const colorCurso = curso => coloresCursos[curso] || "#12355b";
-    const cursos = cursosOficialesVisibles(alumnosPorCurso);
+    let cursos = cursosOficialesVisibles(alumnosPorCurso);
+    if (esDocente()) {
+      const permitidos = cursosDocenteAsignados();
+      const filtrados = cursos.filter(curso => permitidos.includes(curso));
+      cursos = filtrados.length ? filtrados : permitidos;
+    }
     if (!cursoVistaActual || !cursos.includes(cursoVistaActual)) cursoVistaActual = cursos[0] || "";
 
     const trimestre = trimestreActual();
@@ -1005,6 +1074,10 @@
   }
 
   function mostrarInformacion(modoEdicion = false) {
+    actualizarClaseModoAsistencia();
+    document.querySelectorAll("#slideContainer > .d-flex.justify-content-between.mb-3").forEach(el => el.style.display = "");
+    const subtitulo = document.querySelector("#slideContainer h6");
+    if (subtitulo) subtitulo.textContent = "Codigo de colores";
     if (docenteSinInternet()) {
       mostrarBloqueoAsistenciaOffline();
       return;
@@ -1143,19 +1216,24 @@
 
   renderNavbar();
   renderTrimestrePanel();
-  if (esVistaSoloLectura()) mostrarAsistenciaMensual();
+  if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
   else mostrarInformacion();
   window.addEventListener("offline", () => {
-    if (sessionStorage.getItem("sesionRol") === "docente") mostrarBloqueoAsistenciaOffline();
+    if (esDocente() && !esModoResumenDocente()) mostrarBloqueoAsistenciaOffline();
   });
   window.addEventListener("online", () => {
     const overlay = document.getElementById("internetRequiredOverlay");
     if (overlay) overlay.remove();
-    if (sessionStorage.getItem("sesionRol") === "docente") mostrarInformacion();
+    if (esDocente()) {
+      if (esModoResumenDocente()) mostrarAsistenciaMensual();
+      else mostrarInformacion();
+    }
   });
 </script>
 </body>
 </html>
+
+
 
 
 

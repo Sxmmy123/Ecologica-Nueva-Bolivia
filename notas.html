@@ -68,6 +68,8 @@
     th,td { text-align:center; vertical-align:middle; }
     thead th { position:sticky; top:0; z-index:2; }
     .vertical { height:140px; min-width:38px; padding:4px; transform:rotate(180deg); writing-mode:vertical-rl; }
+    .vertical.titulo-largo { font-size:10px; }
+    .vertical.titulo-muy-largo { font-size:8.5px; }
     .alumno { position:sticky; left:0; z-index:4; background:#fff!important; font-weight:800; max-width:260px; min-width:max-content; padding-inline:8px!important; text-align:left; width:1%; }
     .student-link { color:#12355b; font-weight:900; text-decoration:none; }
     .student-link:hover { color:#0d6efd; text-decoration:underline; }
@@ -117,6 +119,8 @@
       .table-wrap th,
       .table-wrap td { padding:4px 5px!important; }
       .vertical { font-size:10px; height:96px; min-width:30px; padding:3px 2px!important; }
+      .vertical.titulo-largo { font-size:8.5px; }
+      .vertical.titulo-muy-largo { font-size:7.2px; }
       .alumno { font-size:11px; line-height:1.08; max-width:none; min-width:auto; padding:5px!important; white-space:normal; width:auto; }
       thead .alumno { z-index:6; }
       tbody .alumno { z-index:3; }
@@ -158,6 +162,8 @@
       #areaImpresion .eval-table .thin,
       #areaImpresion .eval-table .vertical-print { width:auto; }
       #areaImpresion .eval-table .vertical-print { font-size:calc(var(--print-main-font) - .2px); font-weight:400; height:var(--print-header-height); padding:1px 0; transform:rotate(180deg); writing-mode:vertical-rl; }
+      #areaImpresion .eval-table .vertical-print.titulo-largo { font-size:calc(var(--print-main-font) - 1.1px); }
+      #areaImpresion .eval-table .vertical-print.titulo-muy-largo { font-size:calc(var(--print-main-font) - 2px); }
       #areaImpresion .eval-table .print-promedio { font-weight:900; }
       #areaImpresion .eval-table .group-title { height:10px; text-transform:uppercase; }
       #areaImpresion .p-ser { background:#d9ead3!important; }
@@ -177,12 +183,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v76"></script>
+  <script src="firebase-sync.js?v=online-v78"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v76"></script>
+  <script defer src="pwa.js?v=online-v78"></script>
 </head>
 <body>
   <script>
@@ -966,13 +972,13 @@
               </tr>
               <tr>
       `;
-      html += '<th class="vertical">Asistencia</th><th class="vertical">Puntualidad</th><th class="vertical">Responsabilidad</th>';
-      criterios.forEach(c => html += `<th class="vertical"><button class="config-btn" onclick="abrirConfigSer('${escaparAtributo(c.id)}')">${escapar(c.nombre)}</button></th>`);
-      html += '<th class="vertical">Promedio</th><th class="vertical">Puntaje</th>';
-      examenes.forEach(e => html += `<th class="vertical">${escapar(e.nombre)}</th>`);
-      html += '<th class="vertical">Promedio</th><th class="vertical">Puntaje</th>';
-      tareas.forEach(t => html += `<th class="vertical">${escapar(t.nombre)}</th>`);
-      html += '<th class="vertical">Promedio</th><th class="vertical">Puntaje</th><th class="vertical">Nota</th><th class="vertical">Puntaje</th></tr></thead><tbody>';
+      html += thVistaVertical("Asistencia") + thVistaVertical("Puntualidad") + thVistaVertical("Responsabilidad");
+      criterios.forEach(c => html += thVistaVertical(c.nombre, `<button class="config-btn" onclick="abrirConfigSer('${escaparAtributo(c.id)}')">${escapar(c.nombre)}</button>`));
+      html += thVistaVertical("Promedio") + thVistaVertical("Puntaje");
+      examenes.forEach(e => html += thVistaVertical(e.nombre));
+      html += thVistaVertical("Promedio") + thVistaVertical("Puntaje");
+      tareas.forEach(t => html += thVistaVertical(t.nombre));
+      html += thVistaVertical("Promedio") + thVistaVertical("Puntaje") + thVistaVertical("Nota") + thVistaVertical("Puntaje") + '</tr></thead><tbody>';
 
       alumnos.forEach((alumno, index) => {
         const calc = calcularAlumno(alumno, vistaActual, materiaActual);
@@ -1075,7 +1081,18 @@
 
     function thVertical(texto, clase = "") {
       const promedioClass = String(texto || "").toLowerCase() === "promedio" ? "print-promedio" : "";
-      return `<th class="vertical-print thin ${clase} ${promedioClass}">${escapar(texto)}</th>`;
+      return `<th class="vertical-print thin ${clase} ${promedioClass} ${claseTituloLargo(texto)}">${escapar(texto)}</th>`;
+    }
+
+    function claseTituloLargo(texto) {
+      const largo = String(texto || "").trim().length;
+      if (largo >= 28) return "titulo-muy-largo";
+      if (largo >= 18) return "titulo-largo";
+      return "";
+    }
+
+    function thVistaVertical(texto, contenido = null) {
+      return `<th class="vertical ${claseTituloLargo(texto)}">${contenido ?? escapar(texto)}</th>`;
     }
 
     function columnasVista(totalCols) {
@@ -1295,4 +1312,6 @@
   </script>
 </body>
 </html>
+
+
 
