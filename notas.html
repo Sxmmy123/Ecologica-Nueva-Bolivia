@@ -59,6 +59,12 @@
     .materia-tabs .nav-link.active { font-weight:800; }
     .table-wrap { max-height:74vh; overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; }
     table { font-size:12px; white-space:nowrap; margin-bottom:0!important; }
+    .table-wrap .notas-table { table-layout:fixed; width:100%; min-width:var(--table-min-width, 860px); }
+    .table-wrap .notas-table th,
+    .table-wrap .notas-table td { overflow:hidden; text-overflow:ellipsis; }
+    .table-wrap .notas-table .vertical { min-width:0; }
+    .table-wrap .notas-table .score-btn { min-width:0; padding-left:4px; padding-right:4px; width:100%; }
+    .table-wrap .notas-table .final-cell { min-width:0; }
     th,td { text-align:center; vertical-align:middle; }
     thead th { position:sticky; top:0; z-index:2; }
     .vertical { height:140px; min-width:38px; padding:4px; transform:rotate(180deg); writing-mode:vertical-rl; }
@@ -93,6 +99,32 @@
     .hidden { display:none!important; }
     .print-actions { margin-top:12px; text-align:center; }
     #areaImpresion { display:none; }
+    @media (max-width: 576px) {
+      body { padding:74px 8px 12px; }
+      h2 { font-size:20px; }
+      .topbar { border-radius:8px; margin-bottom:10px; padding:10px; }
+      #cursoSelector { flex-wrap:nowrap!important; justify-content:flex-start!important; overflow-x:auto; padding:4px 2px 8px; }
+      .course-btn { border-radius:8px; flex:0 0 auto; font-size:12px; min-width:auto; padding:8px 10px; }
+      .course-btn.active { border-width:3px; transform:scale(1.02); }
+      .term-group { display:grid; gap:6px; grid-template-columns:repeat(2, minmax(0, 1fr)); width:100%; }
+      .term-group .btn { border-radius:8px!important; font-size:12px; padding:7px 6px; }
+      .materia-tabs { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; }
+      .materia-tabs .nav-item { flex:0 0 auto; }
+      .materia-tabs .nav-link { border-radius:8px 8px 0 0; font-size:12px; padding:7px 10px; }
+      .table-wrap { border-radius:6px; margin:0 -4px; max-height:calc(100dvh - 292px); overflow:auto; -webkit-overflow-scrolling:touch; }
+      .table-wrap table { font-size:11px; min-width:max-content; }
+      .table-wrap .notas-table { min-width:var(--table-min-width-mobile, 560px); }
+      .table-wrap th,
+      .table-wrap td { padding:4px 5px!important; }
+      .vertical { font-size:10px; height:96px; min-width:30px; padding:3px 2px!important; }
+      .alumno { font-size:11px; line-height:1.08; max-width:none; min-width:auto; padding:5px!important; white-space:normal; width:auto; }
+      thead .alumno { z-index:6; }
+      tbody .alumno { z-index:3; }
+      .student-link { display:block; font-size:11px; font-weight:800; }
+      .score-btn { font-size:11px; min-width:42px; padding:3px 6px; }
+      .final-cell { font-size:13px; min-width:44px; }
+      .print-actions { margin-top:10px; }
+    }
     @media print {
       @page { size: letter portrait; margin: 7mm; }
       body > *:not(#areaImpresion) { display:none!important; }
@@ -145,12 +177,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v73"></script>
+  <script src="firebase-sync.js?v=online-v75"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v73"></script>
+  <script defer src="pwa.js?v=online-v75"></script>
 </head>
 <body>
   <script>
@@ -916,10 +948,13 @@
       const criterios = obtenerCriterios();
       const autoCfg = configAuto();
       const finales = [];
+      const totalVistaCols = 1 + (5 + criterios.length) + (examenes.length + 2) + (tareas.length + 2) + 2 + 1;
+      const layoutVista = columnasVista(totalVistaCols);
 
       let html = `
         <div class="table-wrap">
-          <table class="table table-bordered table-sm">
+          <table class="table table-bordered table-sm notas-table" style="${layoutVista.style}">
+            ${layoutVista.cols}
             <thead>
               <tr>
                 <th rowspan="2" class="alumno">Alumno</th>
@@ -977,9 +1012,11 @@
 
     function renderPromedioFinal(alumnos) {
       const finales = [];
+      const layoutVista = columnasVista(5);
       let html = `
         <div class="table-wrap">
-          <table class="table table-bordered table-sm">
+          <table class="table table-bordered table-sm notas-table" style="${layoutVista.style}">
+            ${layoutVista.cols}
             <thead><tr>
               <th class="alumno">Alumno</th>
               <th class="gF">1er Trimestre</th>
@@ -1039,6 +1076,23 @@
     function thVertical(texto, clase = "") {
       const promedioClass = String(texto || "").toLowerCase() === "promedio" ? "print-promedio" : "";
       return `<th class="vertical-print thin ${clase} ${promedioClass}">${escapar(texto)}</th>`;
+    }
+
+    function columnasVista(totalCols) {
+      const columnasNotas = Math.max(1, totalCols - 1);
+      const alumnoPct = totalCols <= 7 ? 38 : totalCols <= 16 ? 28 : totalCols <= 26 ? 23 : 19;
+      const notaPct = (100 - alumnoPct) / columnasNotas;
+      const minDesktop = Math.max(720, Math.round(190 + columnasNotas * 46));
+      const minMobile = Math.max(360, Math.round(118 + columnasNotas * 34));
+      return {
+        style: `--table-min-width:${minDesktop}px;--table-min-width-mobile:${minMobile}px`,
+        cols: `
+          <colgroup>
+            <col style="width:${alumnoPct}%">
+            ${Array.from({ length: columnasNotas }, () => `<col style="width:${notaPct}%">`).join("")}
+          </colgroup>
+        `
+      };
     }
 
     function estiloImpresion(totalCols, totalFilas) {
@@ -1241,21 +1295,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
