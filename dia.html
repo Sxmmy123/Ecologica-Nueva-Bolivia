@@ -224,10 +224,10 @@
     .month-label { color:#12355b; font-size:1.15rem; font-weight:900; min-width:190px; text-align:center; text-transform:capitalize; }
     .month-arrow { width:42px; height:42px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:1.2rem; }
     .attendance-wrap { max-height:72vh; overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; }
-    .attendance-table { border-collapse:collapse; font-size:12px; min-width:900px; width:100%; }
+    .attendance-table { border-collapse:collapse; font-size:12px; min-width:var(--attendance-table-min, 900px); width:100%; }
     .attendance-table th, .attendance-table td { border:1px solid #d8e1ea; min-width:34px; padding:6px; text-align:center; vertical-align:middle; }
     .attendance-table thead th { background:#12355b; color:#fff; position:sticky; top:0; z-index:2; }
-    .attendance-table .student-col { background:#fff; color:#213547; left:0; min-width:240px; position:sticky; text-align:left; z-index:3; }
+    .attendance-table .student-col { background:#fff; color:#213547; left:0; max-width:var(--attendance-name-width, 190px); min-width:var(--attendance-name-width, 190px); overflow:hidden; position:sticky; text-align:left; text-overflow:ellipsis; white-space:nowrap; width:var(--attendance-name-width, 190px); z-index:3; }
     .attendance-table tbody tr { cursor:pointer; }
     .attendance-table tbody tr.row-selected td {
       border-bottom:2px solid #6f7f8f;
@@ -300,12 +300,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v78"></script>
+  <script src="firebase-sync.js?v=online-v79"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v78"></script>
+  <script defer src="pwa.js?v=online-v79"></script>
 </head>
 <body>
 <script>
@@ -859,6 +859,13 @@
     }, {});
   }
 
+  function estiloTablaAsistencia(alumnos, cantidadFechas) {
+    const nombreMayor = alumnos.reduce((max, nombre) => Math.max(max, String(nombre || "").length), 0);
+    const anchoNombre = Math.max(132, Math.min(230, Math.ceil(nombreMayor * 7.1) + 18));
+    const anchoTabla = Math.max(620, anchoNombre + (cantidadFechas * 42) + 310);
+    return `--attendance-name-width:${anchoNombre}px;--attendance-table-min:${anchoTabla}px`;
+  }
+
   function estadoCuentaAsistencia(estado) {
     return ["verde", "morado"].includes(estado);
   }
@@ -976,6 +983,7 @@
     const meses = grupoMeses(fechasRegistradas);
     const mesesOrdenados = Object.keys(meses).sort();
     const totalColumnasFechas = fechasRegistradas.length;
+    const estiloTabla = estiloTablaAsistencia(alumnos, totalColumnasFechas);
 
     let html = `
       <div class="course-tabs-bar">
@@ -1001,7 +1009,7 @@
 
     html += `
       <div class="attendance-wrap">
-        <table class="attendance-table">
+        <table class="attendance-table" style="${estiloTabla}">
           <thead>
             <tr>
               <th class="student-col" rowspan="2">Alumno</th>
@@ -1232,6 +1240,7 @@
 </script>
 </body>
 </html>
+
 
 
 
