@@ -224,10 +224,16 @@
     .month-label { color:#12355b; font-size:1.15rem; font-weight:900; min-width:190px; text-align:center; text-transform:capitalize; }
     .month-arrow { width:42px; height:42px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:1.2rem; }
     .attendance-wrap { max-height:72vh; overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; }
-    .attendance-table { border-collapse:collapse; font-size:12px; min-width:var(--attendance-table-min, 900px); width:100%; }
+    .attendance-table { --attendance-index-width:38px; border-collapse:separate; border-spacing:0; font-size:12px; min-width:var(--attendance-table-min, 900px); width:100%; }
     .attendance-table th, .attendance-table td { border:1px solid #d8e1ea; min-width:34px; padding:6px; text-align:center; vertical-align:middle; }
-    .attendance-table thead th { background:#12355b; color:#fff; position:sticky; top:0; z-index:2; }
-    .attendance-table .student-col { background:#fff; color:#213547; left:0; max-width:var(--attendance-name-width, 190px); min-width:var(--attendance-name-width, 190px); overflow:hidden; position:sticky; text-align:left; text-overflow:ellipsis; white-space:nowrap; width:var(--attendance-name-width, 190px); z-index:3; }
+    .attendance-table thead th { background:#12355b; color:#fff; position:sticky; z-index:4; }
+    .attendance-table thead tr:first-child th { top:0; }
+    .attendance-table thead tr:nth-child(2) th { top:32px; }
+    .attendance-table .index-col { background:#fff; color:#213547; font-weight:900; left:0; min-width:var(--attendance-index-width); position:sticky; width:var(--attendance-index-width); z-index:3; }
+    .attendance-table thead .index-col { background:#12355b!important; color:#fff; z-index:8; }
+    .attendance-table thead .student-col { background:#12355b!important; color:#fff; z-index:7; }
+    .attendance-table tbody .student-col { z-index:3; }
+    .attendance-table .student-col { background:#fff; color:#213547; left:var(--attendance-index-width); max-width:var(--attendance-name-width, 190px); min-width:var(--attendance-name-width, 190px); overflow:hidden; position:sticky; text-align:left; text-overflow:ellipsis; white-space:nowrap; width:var(--attendance-name-width, 190px); }
     .attendance-table tbody tr { cursor:pointer; }
     .attendance-table tbody tr.row-selected td {
       border-bottom:2px solid #6f7f8f;
@@ -235,15 +241,17 @@
     }
     .attendance-table tbody tr.row-selected td:first-child { border-left:2px solid #6f7f8f; }
     .attendance-table tbody tr.row-selected td:last-child { border-right:2px solid #6f7f8f; }
-    .attendance-table .month-head { background:#0f477a; text-transform:capitalize; }
+    .attendance-table .month-head { background:#0f477a; height:32px; text-transform:capitalize; }
     .attendance-table .date-head { font-size:11px; line-height:1.15; min-width:48px; white-space:nowrap; }
-    .attendance-table .total-head { background:#0f766e; min-width:74px; }
+    .attendance-table .total-head { background:#0f766e; min-width:38px; width:38px; }
     .attendance-table .total-cell { background:#f8fafc; color:#12355b; font-weight:900; }
     .attendance-lock-note { background:#fff8e1; border:1px solid #ffe08a; border-radius:8px; color:#745100; font-size:13px; font-weight:800; margin-bottom:10px; padding:8px 10px; }
     .attendance-edit-log { background:#f8fafc; border:1px solid #dbe7ef; border-radius:8px; color:#516070; font-size:12px; margin:8px 0 10px; padding:8px 10px; }
     .attendance-edit-log summary { cursor:pointer; font-weight:900; list-style:none; }
     .attendance-edit-log summary::-webkit-details-marker { display:none; }
     .attendance-edit-log ul { margin:8px 0 0; padding-left:18px; }
+    .attendance-actions { align-items:center; display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin:10px 0; }
+    .attendance-actions .btn { font-weight:900; }
     .trimester-summary { align-items:center; background:#fff; border:1px solid #dbe7ef; border-left:8px solid #12355b; border-radius:10px; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; margin-bottom:12px; padding:12px 14px; }
     .trimester-summary .title { color:#12355b; font-weight:900; text-transform:capitalize; }
     .trimester-summary.compact { align-items:flex-start; border-left-width:10px; padding:10px 12px; }
@@ -300,12 +308,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v79"></script>
+  <script src="firebase-sync.js?v=online-v82"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v79"></script>
+  <script defer src="pwa.js?v=online-v82"></script>
 </head>
 <body>
 <script>
@@ -862,7 +870,7 @@
   function estiloTablaAsistencia(alumnos, cantidadFechas) {
     const nombreMayor = alumnos.reduce((max, nombre) => Math.max(max, String(nombre || "").length), 0);
     const anchoNombre = Math.max(132, Math.min(230, Math.ceil(nombreMayor * 7.1) + 18));
-    const anchoTabla = Math.max(620, anchoNombre + (cantidadFechas * 42) + 310);
+    const anchoTabla = Math.max(560, 38 + anchoNombre + (cantidadFechas * 42) + 170);
     return `--attendance-name-width:${anchoNombre}px;--attendance-table-min:${anchoTabla}px`;
   }
 
@@ -1008,10 +1016,19 @@
     }
 
     html += `
+      <div class="attendance-actions">
+        <button class="btn btn-outline-dark btn-sm" type="button" onclick="imprimirResumenAsistencia()">
+          <i class="bi bi-printer-fill"></i> Imprimir
+        </button>
+        <button class="btn btn-success btn-sm" type="button" onclick="exportarResumenAsistenciaExcel()">
+          <i class="bi bi-file-earmark-spreadsheet-fill"></i> Excel
+        </button>
+      </div>
       <div class="attendance-wrap">
         <table class="attendance-table" style="${estiloTabla}">
           <thead>
             <tr>
+              <th class="index-col" rowspan="2">N°</th>
               <th class="student-col" rowspan="2">Alumno</th>
               ${mesesOrdenados.map(mesClave => `<th class="month-head" colspan="${meses[mesClave].length}">${etiquetaMes(`${mesClave}-01`)}</th>`).join("")}
               <th class="total-head" rowspan="2">P</th>
@@ -1026,9 +1043,9 @@
           <tbody>
     `;
 
-    alumnos.forEach(nombre => {
+    alumnos.forEach((nombre, index) => {
       const totales = { asistencia: 0, atrasos: 0, permisos: 0, faltas: 0 };
-      html += `<tr><td class="student-col fw-bold">${nombre}</td>`;
+      html += `<tr><td class="index-col">${index + 1}</td><td class="student-col fw-bold">${nombre}</td>`;
       fechasRegistradas.forEach(fecha => {
         const estado = asistencias[`${fecha}|${cursoVistaActual}|${nombre}`] || "blanco";
         if (estado === "morado") {
@@ -1051,6 +1068,86 @@
     html += "</tbody></table></div>";
     detalleContainer.innerHTML = html;
     activarSeleccionFilasAsistencia();
+  }
+
+  function nombreArchivoSeguro(texto) {
+    return String(texto || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "")
+      .toLowerCase();
+  }
+
+  function tablaResumenAsistenciaActual() {
+    return document.querySelector("#detalleCursos .attendance-table");
+  }
+
+  function tituloResumenAsistencia() {
+    return `Asistencia - ${cursoVistaActual || "Curso"} - ${etiquetaTrimestre(trimestreActual())}`;
+  }
+
+  function imprimirResumenAsistencia() {
+    const tabla = tablaResumenAsistenciaActual();
+    if (!tabla) return alert("No hay tabla de asistencia para imprimir.");
+    const ventana = window.open("", "_blank");
+    if (!ventana) return alert("No se pudo abrir la ventana de impresion.");
+    ventana.document.write(`
+      <!doctype html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <title>${escaparHTML(tituloResumenAsistencia())}</title>
+        <style>
+          @page { size: letter landscape; margin: 8mm; }
+          body { color:#111; font-family:Arial, sans-serif; margin:0; }
+          h1 { font-size:16px; margin:0 0 4px; text-align:center; }
+          .meta { font-size:11px; font-weight:700; margin-bottom:8px; text-align:center; }
+          table { border-collapse:collapse; font-size:9px; width:100%; }
+          th, td { border:1px solid #222; padding:3px 4px; text-align:center; vertical-align:middle; }
+          th { background:#e9eef5; font-weight:900; }
+          .student-col { text-align:left; white-space:nowrap; }
+          .estado-verde { background:#d4edda; }
+          .estado-amarillo { background:#fff3cd; }
+          .estado-morado { background:#e0c3fc; }
+          .estado-rojo, .estado-blanco { background:#f8d7da; }
+          .total-cell { background:#f8fafc; font-weight:900; }
+        </style>
+      </head>
+      <body>
+        <h1>${escaparHTML(tituloResumenAsistencia())}</h1>
+        <div class="meta">Generado: ${new Date().toLocaleString("es-BO")}</div>
+        ${tabla.outerHTML}
+      </body>
+      </html>
+    `);
+    ventana.document.close();
+    ventana.focus();
+    setTimeout(() => {
+      ventana.print();
+      ventana.close();
+    }, 250);
+  }
+
+  function exportarResumenAsistenciaExcel() {
+    const tabla = tablaResumenAsistenciaActual();
+    if (!tabla) return alert("No hay tabla de asistencia para exportar.");
+    const html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="UTF-8"></head>
+      <body>
+        <h3>${escaparHTML(tituloResumenAsistencia())}</h3>
+        ${tabla.outerHTML}
+      </body>
+      </html>
+    `;
+    const blob = new Blob([html], { type:"application/vnd.ms-excel;charset=utf-8" });
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(blob);
+    enlace.download = `${nombreArchivoSeguro(tituloResumenAsistencia()) || "asistencia"}.xls`;
+    document.body.appendChild(enlace);
+    enlace.click();
+    URL.revokeObjectURL(enlace.href);
+    enlace.remove();
   }
 
   function activarSeleccionFilasAsistencia() {
@@ -1240,6 +1337,9 @@
 </script>
 </body>
 </html>
+
+
+
 
 
 

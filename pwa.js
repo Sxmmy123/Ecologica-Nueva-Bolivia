@@ -6,7 +6,7 @@
 
   if ("serviceWorker" in navigator && !isLocalFile) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js?v=online-v79", { updateViaCache: "none" })
+      navigator.serviceWorker.register("./service-worker.js?v=online-v82", { updateViaCache: "none" })
         .then(registration => {
           if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
           registration.addEventListener("updatefound", () => {
@@ -32,6 +32,9 @@
     });
   }
 })();
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "nueva-bolivia-pwa-v79";
+﻿const CACHE_NAME = "nueva-bolivia-pwa-v82";
 
 const CORE_ASSETS = [
   "./",
@@ -12,8 +12,8 @@ const CORE_ASSETS = [
   "./alumno.html",
   "./reportes.html",
   "./firebase-config.js",
-  "./firebase-sync.js?v=online-v79",
-  "./pwa.js?v=online-v79",
+  "./firebase-sync.js?v=online-v82",
+  "./pwa.js?v=online-v82",
   "./manifest.json",
   "./images/login-fondo.png",
   "./images/logo-nueva-bolivia.png",
@@ -68,6 +68,9 @@ self.addEventListener("fetch", event => {
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
+
+
+
 
 
 
