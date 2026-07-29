@@ -1,8 +1,9 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "online-v90";
-  const CURRENT_CACHE = "nueva-bolivia-pwa-v90";
+  const APP_VERSION = "v0.91";
+  const CACHE_PREFIX = "nueva-bolivia-pwa-";
+  const CURRENT_CACHE = "nueva-bolivia-pwa-v0.91";
   const CLEANUP_KEY = "__pwaCacheCleanupVersion";
   const CLEANUP_RELOAD_KEY = "__pwaCacheCleanupReloaded:" + APP_VERSION;
   const isLocalFile = location.protocol === "file:";
@@ -15,7 +16,7 @@
     try {
       const keys = await caches.keys();
       await Promise.all(keys
-        .filter(key => key !== CURRENT_CACHE)
+        .filter(key => key.startsWith(CACHE_PREFIX) && key !== CURRENT_CACHE)
         .map(key => caches.delete(key)));
       localStorage.setItem(CLEANUP_KEY, APP_VERSION);
 
@@ -32,7 +33,7 @@
     window.addEventListener("load", async () => {
       await cleanOldCachesOnce();
 
-      navigator.serviceWorker.register("./service-worker.js?v=online-v90", { updateViaCache: "none" })
+      navigator.serviceWorker.register("./service-worker.js?v=v0.91", { updateViaCache: "none" })
         .then(registration => {
           if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
           registration.addEventListener("updatefound", () => {
