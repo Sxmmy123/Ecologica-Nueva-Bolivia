@@ -1,9 +1,10 @@
 // 1) En Firebase abre: Configuracion del proyecto > Tus apps > Web.
 // 2) Copia el objeto firebaseConfig y reemplaza estos datos.
-// 3) Activa Cloud Firestore en el proyecto.
+// 3) Activa Realtime Database en el proyecto.
 window.firebaseConfig = {
     apiKey: "AIzaSyBKV8AhkYLFOAGbvB2zkdc4OtMlfwmxwU0",
     authDomain: "sistema-escolar-1415f.firebaseapp.com",
+    databaseURL: "https://sistema-escolar-1415f-default-rtdb.firebaseio.com",
     projectId: "sistema-escolar-1415f",
     storageBucket: "sistema-escolar-1415f.firebasestorage.app",
     messagingSenderId: "96923207142",

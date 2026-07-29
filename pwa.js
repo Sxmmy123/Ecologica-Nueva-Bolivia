@@ -1,12 +1,38 @@
-﻿(function () {
+(function () {
   "use strict";
 
+  const APP_VERSION = "online-v88";
+  const CURRENT_CACHE = "nueva-bolivia-pwa-v88";
+  const CLEANUP_KEY = "__pwaCacheCleanupVersion";
+  const CLEANUP_RELOAD_KEY = "__pwaCacheCleanupReloaded:" + APP_VERSION;
   const isLocalFile = location.protocol === "file:";
   let refreshing = false;
 
+  async function cleanOldCachesOnce() {
+    if (isLocalFile || !("caches" in window)) return;
+    if (localStorage.getItem(CLEANUP_KEY) === APP_VERSION) return;
+
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys
+        .filter(key => key !== CURRENT_CACHE)
+        .map(key => caches.delete(key)));
+      localStorage.setItem(CLEANUP_KEY, APP_VERSION);
+
+      if (!sessionStorage.getItem(CLEANUP_RELOAD_KEY)) {
+        sessionStorage.setItem(CLEANUP_RELOAD_KEY, "1");
+        window.location.reload();
+      }
+    } catch (error) {
+      console.info("No se pudo limpiar el cache anterior:", error.message);
+    }
+  }
+
   if ("serviceWorker" in navigator && !isLocalFile) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js?v=online-v82", { updateViaCache: "none" })
+    window.addEventListener("load", async () => {
+      await cleanOldCachesOnce();
+
+      navigator.serviceWorker.register("./service-worker.js?v=online-v88", { updateViaCache: "none" })
         .then(registration => {
           if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
           registration.addEventListener("updatefound", () => {
@@ -32,6 +58,9 @@
     });
   }
 })();
+
+
+
 
 
 

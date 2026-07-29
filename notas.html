@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -57,20 +57,28 @@
     .course-btn.active { border-width:4px; color:#fff; transform:scale(1.06); box-shadow:0 10px 20px rgba(0,0,0,.18); }
     .term-group .btn { font-weight:700; }
     .materia-tabs .nav-link.active { font-weight:800; }
-    .table-wrap { max-height:74vh; overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; }
+    .table-wrap { max-height:74vh; overflow:auto; border:1px solid #dbe7ef; border-radius:8px; background:#fff; -webkit-overflow-scrolling:touch; }
     table { font-size:12px; white-space:nowrap; margin-bottom:0!important; }
-    .table-wrap .notas-table { table-layout:fixed; width:100%; min-width:var(--table-min-width, 860px); }
+    .table-wrap .notas-table { --notas-index-width:38px; --notas-head-top:34px; border-collapse:separate; border-spacing:0; font-family:"Arial Narrow", Arial, sans-serif; table-layout:fixed; width:100%; min-width:var(--table-min-width, 860px); }
     .table-wrap .notas-table th,
     .table-wrap .notas-table td { overflow:hidden; text-overflow:ellipsis; }
+    .table-wrap .notas-table thead th { position:sticky; z-index:4; }
+    .table-wrap .notas-table thead tr:first-child th { top:0; z-index:6; }
+    .table-wrap .notas-table thead tr:nth-child(2) th { top:var(--notas-head-top); z-index:5; }
+    .table-wrap .notas-table .index-col { background:#fff; color:#12355b; font-weight:900; left:0; min-width:var(--notas-index-width); position:sticky; width:var(--notas-index-width); z-index:4; }
+    .table-wrap .notas-table thead .index-col { background:#12355b!important; color:#fff; z-index:10; }
+    .table-wrap .notas-table thead .alumno { background:#12355b!important; color:#fff; left:var(--notas-index-width); top:0; z-index:9; }
+    .table-wrap .notas-table tbody .alumno { z-index:3; }
     .table-wrap .notas-table .vertical { min-width:0; }
     .table-wrap .notas-table .score-btn { min-width:0; padding-left:4px; padding-right:4px; width:100%; }
     .table-wrap .notas-table .final-cell { min-width:0; }
     th,td { text-align:center; vertical-align:middle; }
     thead th { position:sticky; top:0; z-index:2; }
     .vertical { height:140px; min-width:38px; padding:4px; transform:rotate(180deg); writing-mode:vertical-rl; }
+    .vertical.promedio-puntaje { font-weight:400!important; }
     .vertical.titulo-largo { font-size:10px; }
     .vertical.titulo-muy-largo { font-size:8.5px; }
-    .alumno { position:sticky; left:0; z-index:4; background:#fff!important; font-weight:800; max-width:260px; min-width:max-content; padding-inline:8px!important; text-align:left; width:1%; }
+    .alumno { position:sticky; left:var(--notas-index-width, 38px); z-index:4; background:#fff!important; font-weight:800; max-width:260px; min-width:max-content; padding-inline:8px!important; text-align:left; width:1%; }
     .student-link { color:#12355b; font-weight:900; text-decoration:none; }
     .student-link:hover { color:#0d6efd; text-decoration:underline; }
     .student-row td { border-top-width:4px!important; }
@@ -92,6 +100,9 @@
     .final-cell { color:#fff!important; font-size:15px; font-weight:900; }
     .final-ok { background:#198754!important; }
     .final-bad { background:#dc3545!important; }
+    .status-cell { font-size:11px; font-weight:800; min-width:0; }
+    .status-ok { background:#e6f4ea!important; color:#14532d; }
+    .status-bad { background:#fde8e8!important; color:#842029; }
     .weighted { background:#e8f0fe!important; color:#12355b; font-weight:900; }
     .nota-btn { width:42px; height:38px; margin:2px; border:0; border-radius:6px; background:#eef2f6; }
     .nota-btn:hover { background:#0d6efd; color:#fff; }
@@ -115,7 +126,7 @@
       .materia-tabs .nav-link { border-radius:8px 8px 0 0; font-size:12px; padding:7px 10px; }
       .table-wrap { border-radius:6px; margin:0 -4px; max-height:calc(100dvh - 292px); overflow:auto; -webkit-overflow-scrolling:touch; }
       .table-wrap table { font-size:11px; min-width:max-content; }
-      .table-wrap .notas-table { min-width:var(--table-min-width-mobile, 560px); }
+      .table-wrap .notas-table { --notas-head-top:31px; min-width:var(--table-min-width-mobile, 560px); }
       .table-wrap th,
       .table-wrap td { padding:4px 5px!important; }
       .vertical { font-size:10px; height:96px; min-width:30px; padding:3px 2px!important; }
@@ -133,7 +144,7 @@
       @page { size: letter portrait; margin: 7mm; }
       body > *:not(#areaImpresion) { display:none!important; }
       body { background:#fff!important; padding:0!important; }
-      #areaImpresion { display:block!important; color:#000; font-family:Arial, sans-serif; }
+      #areaImpresion { display:block!important; color:#000; font-family:"Arial Narrow", Arial, sans-serif; }
       #areaImpresion .print-sheet { --print-main-font:7px; --print-row-height:13px; --print-name-font:6.6px; --print-header-height:88px; --print-logo-size:52px; display:flex; flex-direction:column; margin:0 auto; min-height:254mm; width:100%; }
       #areaImpresion .print-head { align-items:stretch; display:grid; gap:4px; grid-template-columns:1fr 86px; margin-bottom:6px; }
       #areaImpresion .print-title { background:#ff2b2b; color:#fff; font-size:12px; font-weight:900; margin-bottom:7px; padding:5px 6px; text-transform:uppercase; }
@@ -164,7 +175,7 @@
       #areaImpresion .eval-table .vertical-print { font-size:calc(var(--print-main-font) - .2px); font-weight:400; height:var(--print-header-height); padding:1px 0; transform:rotate(180deg); writing-mode:vertical-rl; }
       #areaImpresion .eval-table .vertical-print.titulo-largo { font-size:calc(var(--print-main-font) - 1.1px); }
       #areaImpresion .eval-table .vertical-print.titulo-muy-largo { font-size:calc(var(--print-main-font) - 2px); }
-      #areaImpresion .eval-table .print-promedio { font-weight:900; }
+      #areaImpresion .eval-table .print-promedio { font-weight:400; }
       #areaImpresion .eval-table .group-title { height:10px; text-transform:uppercase; }
       #areaImpresion .p-ser { background:#d9ead3!important; }
       #areaImpresion .p-saber { background:#d9eaf7!important; }
@@ -181,14 +192,14 @@
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v82"></script>
+  <script src="firebase-sync.js?v=online-v88"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v82"></script>
+  <script defer src="pwa.js?v=online-v88"></script>
 </head>
 <body>
   <script>
@@ -954,7 +965,7 @@
       const criterios = obtenerCriterios();
       const autoCfg = configAuto();
       const finales = [];
-      const totalVistaCols = 1 + (5 + criterios.length) + (examenes.length + 2) + (tareas.length + 2) + 2 + 1;
+      const totalVistaCols = 2 + (5 + criterios.length) + (examenes.length + 2) + (tareas.length + 2) + 2 + 2;
       const layoutVista = columnasVista(totalVistaCols);
 
       let html = `
@@ -963,14 +974,17 @@
             ${layoutVista.cols}
             <thead>
               <tr>
-                <th rowspan="2" class="alumno">Alumno</th>
+                <th class="index-col">N°</th>
+                <th class="alumno">Alumno</th>
                 <th colspan="${5 + criterios.length}" class="gR">SER 10 <button class="btn btn-sm btn-light ms-1" onclick="agregarCriterioSer()">+</button></th>
                 <th colspan="${Math.max(1, examenes.length + 2)}" class="gS">SABER 45</th>
                 <th colspan="${Math.max(1, tareas.length + 2)}" class="gH">HACER 40</th>
                 <th colspan="2" class="gA"><button class="config-btn" onclick="abrirConfigAuto()">${escapar(autoCfg.titulo)} 5</button></th>
-                <th rowspan="2" class="gF">Nota final</th>
+                <th class="gF" colspan="2">Final</th>
               </tr>
               <tr>
+                <th class="index-col"></th>
+                <th class="alumno"></th>
       `;
       html += thVistaVertical("Asistencia") + thVistaVertical("Puntualidad") + thVistaVertical("Responsabilidad");
       criterios.forEach(c => html += thVistaVertical(c.nombre, `<button class="config-btn" onclick="abrirConfigSer('${escaparAtributo(c.id)}')">${escapar(c.nombre)}</button>`));
@@ -978,12 +992,12 @@
       examenes.forEach(e => html += thVistaVertical(e.nombre));
       html += thVistaVertical("Promedio") + thVistaVertical("Puntaje");
       tareas.forEach(t => html += thVistaVertical(t.nombre));
-      html += thVistaVertical("Promedio") + thVistaVertical("Puntaje") + thVistaVertical("Nota") + thVistaVertical("Puntaje") + '</tr></thead><tbody>';
+      html += thVistaVertical("Promedio") + thVistaVertical("Puntaje") + thVistaVertical("Nota") + thVistaVertical("Puntaje") + thVistaVertical("Nota final") + thVistaVertical("Situacion") + '</tr></thead><tbody>';
 
       alumnos.forEach((alumno, index) => {
         const calc = calcularAlumno(alumno, vistaActual, materiaActual);
         finales.push(calc.final);
-        html += `<tr class="student-row c${(index % 8) + 1}"><td class="alumno"><a class="student-link" href="${urlAlumno(alumno)}">${escapar(alumno)}</a></td>`;
+        html += `<tr class="student-row c${(index % 8) + 1}"><td class="index-col">${index + 1}</td><td class="alumno"><a class="student-link" href="${urlAlumno(alumno)}">${escapar(alumno)}</a></td>`;
 
         html += `<td class="${color(calc.asistencia100)}">${calc.asistencia100}</td><td class="${color(calc.puntualidad100)}">${calc.puntualidad100}</td><td class="${color(calc.responsabilidad100)}">${calc.responsabilidad100}</td>`;
 
@@ -1008,7 +1022,7 @@
         });
         html += `<td class="${color(calc.hacer100)}">${calc.hacer100}</td><td class="weighted">${calc.hacer40}</td>`;
         html += `<td><button class="btn btn-sm ${calc.auto100 > 50 ? "btn-success" : "btn-danger"} score-btn" onclick="abrirNota('auto','${escaparAtributo(alumno)}')">${calc.auto100}</button></td><td class="weighted">${calc.auto5}</td>`;
-        html += `<td class="final-cell ${calc.final <= 50 ? "final-bad" : "final-ok"}">${calc.final}</td></tr>`;
+        html += `<td class="final-cell ${calc.final <= 50 ? "final-bad" : "final-ok"}">${calc.final}</td><td class="status-cell ${calc.final <= 50 ? "status-bad" : "status-ok"}">${calc.final <= 50 ? "Reprobado" : "Aprobado"}</td></tr>`;
       });
 
       html += "</tbody></table></div>";
@@ -1018,17 +1032,19 @@
 
     function renderPromedioFinal(alumnos) {
       const finales = [];
-      const layoutVista = columnasVista(5);
+      const layoutVista = columnasVista(7);
       let html = `
         <div class="table-wrap">
           <table class="table table-bordered table-sm notas-table" style="${layoutVista.style}">
             ${layoutVista.cols}
             <thead><tr>
+              <th class="index-col">N°</th>
               <th class="alumno">Alumno</th>
               <th class="gF">1er Trimestre</th>
               <th class="gF">2do Trimestre</th>
               <th class="gF">3er Trimestre</th>
               <th class="gF">Promedio final</th>
+              <th class="gF">Situacion</th>
             </tr></thead><tbody>
       `;
 
@@ -1036,9 +1052,9 @@
         const notasTri = TRIS.map(tri => calcularAlumno(alumno, tri, materiaActual).final);
         const promedio = Math.round(notasTri.reduce((s, n) => s + n, 0) / notasTri.length);
         finales.push(promedio);
-        html += `<tr class="student-row c${(index % 8) + 1}"><td class="alumno"><a class="student-link" href="${urlAlumno(alumno)}">${escapar(alumno)}</a></td>`;
+        html += `<tr class="student-row c${(index % 8) + 1}"><td class="index-col">${index + 1}</td><td class="alumno"><a class="student-link" href="${urlAlumno(alumno)}">${escapar(alumno)}</a></td>`;
         notasTri.forEach(n => html += `<td class="${color(n)}">${n}</td>`);
-        html += `<td class="final-cell ${promedio <= 50 ? "final-bad" : "final-ok"}">${promedio}</td></tr>`;
+        html += `<td class="final-cell ${promedio <= 50 ? "final-bad" : "final-ok"}">${promedio}</td><td class="status-cell ${promedio <= 50 ? "status-bad" : "status-ok"}">${promedio <= 50 ? "Reprobado" : "Aprobado"}</td></tr>`;
       });
 
       html += "</tbody></table></div>";
@@ -1063,9 +1079,9 @@
     function campoImpresion(materia) {
       const texto = String(materia || "").toLowerCase();
       if (/matem/.test(texto)) return "CIENCIA TECNOLOGIA Y PRODUCCION";
-      if (/lenguaje|sociales|religion|mÃºsica|musica|artes/.test(texto)) return "COMUNIDAD Y SOCIEDAD";
+      if (/lenguaje|sociales|religion|música|musica|artes/.test(texto)) return "COMUNIDAD Y SOCIEDAD";
       if (/naturales/.test(texto)) return "VIDA TIERRA TERRITORIO";
-      if (/fisica|fÃ­sica/.test(texto)) return "VIDA TIERRA TERRITORIO";
+      if (/fisica|física/.test(texto)) return "VIDA TIERRA TERRITORIO";
       return "COMUNIDAD Y SOCIEDAD";
     }
 
@@ -1092,19 +1108,23 @@
     }
 
     function thVistaVertical(texto, contenido = null) {
-      return `<th class="vertical ${claseTituloLargo(texto)}">${contenido ?? escapar(texto)}</th>`;
+      const simple = String(texto || "").toLowerCase();
+      const pesoClass = ["promedio", "puntaje"].includes(simple) ? "promedio-puntaje" : "";
+      return `<th class="vertical ${claseTituloLargo(texto)} ${pesoClass}">${contenido ?? escapar(texto)}</th>`;
     }
 
     function columnasVista(totalCols) {
-      const columnasNotas = Math.max(1, totalCols - 1);
-      const alumnoPct = totalCols <= 7 ? 38 : totalCols <= 16 ? 28 : totalCols <= 26 ? 23 : 19;
-      const notaPct = (100 - alumnoPct) / columnasNotas;
-      const minDesktop = Math.max(720, Math.round(190 + columnasNotas * 46));
-      const minMobile = Math.max(360, Math.round(118 + columnasNotas * 34));
+      const columnasNotas = Math.max(1, totalCols - 2);
+      const alumnoPct = totalCols <= 8 ? 34 : totalCols <= 17 ? 25 : totalCols <= 27 ? 20 : 17;
+      const nroPct = totalCols <= 17 ? 5 : 3.8;
+      const notaPct = (100 - alumnoPct - nroPct) / columnasNotas;
+      const minDesktop = Math.max(760, Math.round(42 + 170 + columnasNotas * 46));
+      const minMobile = Math.max(390, Math.round(38 + 116 + columnasNotas * 34));
       return {
         style: `--table-min-width:${minDesktop}px;--table-min-width-mobile:${minMobile}px`,
         cols: `
           <colgroup>
+            <col style="width:${nroPct}%">
             <col style="width:${alumnoPct}%">
             ${Array.from({ length: columnasNotas }, () => `<col style="width:${notaPct}%">`).join("")}
           </colgroup>
@@ -1312,6 +1332,9 @@
   </script>
 </body>
 </html>
+
+
+
 
 
 

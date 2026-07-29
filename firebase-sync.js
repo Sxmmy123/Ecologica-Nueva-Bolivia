@@ -12,8 +12,8 @@
   const PACKAGE_META_KEY = "__firebasePackageMeta";
   const DEVICE_ID_KEY = "__firebaseDeviceId";
   const ONLINE_ONLY_KEY = "__appOnlineOnlyVersion";
-  const ONLINE_ONLY_VERSION = "online-v1";
-  const STRUCTURE_VERSION = "3";
+  const ONLINE_ONLY_VERSION = "online-v2-rtdb";
+  const STRUCTURE_VERSION = "4";
   const RETRY_SYNC_DELAY = 30000;
 
   const META_KEYS = new Set([PENDING_KEY, LAST_SYNC_KEY, LAST_PULL_KEY, STATUS_KEY, STRUCTURE_KEY, LAST_ERROR_KEY, LOCAL_DIRTY_KEY, PACKAGE_META_KEY, DEVICE_ID_KEY, ONLINE_ONLY_KEY]);
@@ -132,6 +132,10 @@
       .replace(/^_+|_+$/g, "") || "general";
   }
 
+  function rtdbKey(text) {
+    return String(text || "general").replace(/[.#$\[\]\/]/g, "_") || "general";
+  }
+
   function parseJSON(raw, fallback) {
     try { return JSON.parse(raw ?? ""); }
     catch (error) { return fallback; }
@@ -139,6 +143,43 @@
 
   function stringify(value) {
     return JSON.stringify(value ?? null);
+  }
+
+  function parseStoredValue(value, fallback) {
+    if (typeof value === "string") return parseJSON(value, fallback);
+    if (value === undefined || value === null) return fallback;
+    return value;
+  }
+
+  function valueForDatabase(value) {
+    if (typeof value !== "string") return value;
+    const text = value.trim();
+    if (!text) return value;
+    try { return JSON.parse(text); }
+    catch (error) { return value; }
+  }
+
+  function valueForLocalStorage(value, fallback = "") {
+    if (value === undefined || value === null) return typeof fallback === "string" ? fallback : stringify(fallback);
+    return typeof value === "string" ? value : stringify(value);
+  }
+
+  function withoutUndefined(value) {
+    if (Array.isArray(value)) return value.map(withoutUndefined);
+    if (value && typeof value === "object") {
+      return Object.entries(value).reduce((next, [key, item]) => {
+        if (item !== undefined) next[key] = withoutUndefined(item);
+        return next;
+      }, {});
+    }
+    return value;
+  }
+
+  function dataForDatabase(data) {
+    const next = { ...data };
+    if (Object.prototype.hasOwnProperty.call(next, "value")) next.value = valueForDatabase(next.value);
+    if (Object.prototype.hasOwnProperty.call(next, "activeIds")) next.activeIds = valueForDatabase(next.activeIds);
+    return withoutUndefined(next);
   }
 
   function deviceId() {
@@ -384,7 +425,7 @@
     catch (storageError) {}
     if (code === "permission-denied" || /permission|permis/i.test(message)) {
       permissionBlocked = true;
-      setStatus("sin-permisos-firestore");
+      setStatus("sin-permisos-database");
     }
     console.error("Firebase sync error", context, code, message);
   }
@@ -464,8 +505,8 @@
     const message = reason === "permisos"
       ? "No se puede guardar porque Firebase no tiene permisos de escritura."
       : "Conecte a internet para guardar. Este cambio no fue registrado.";
-    setWorkMode(reason === "permisos" ? "sin-permisos-firestore" : "sin-internet-online");
-    setStatus(reason === "permisos" ? "sin-permisos-firestore" : "sin-internet-no-guardado");
+    setWorkMode(reason === "permisos" ? "sin-permisos-database" : "sin-internet-online");
+    setStatus(reason === "permisos" ? "sin-permisos-database" : "sin-internet-no-guardado");
     showInternetRequired(message);
     window.dispatchEvent(new CustomEvent("firebaseWriteBlocked", { detail: { reason, message } }));
     const now = Date.now();
@@ -957,34 +998,21 @@
 
   async function initFirebase() {
     const cfg = window.firebaseConfig || {};
-    if (!window.firebase || !window.firebase.firestore || !cfg.apiKey || !cfg.projectId || String(cfg.apiKey).startsWith("PEGA_AQUI")) {
+    if (!window.firebase || !window.firebase.database || !cfg.apiKey || !cfg.projectId || !cfg.databaseURL || String(cfg.apiKey).startsWith("PEGA_AQUI")) {
       setStatus("configuracion-pendiente");
       return false;
     }
 
     if (!firebase.apps.length) firebase.initializeApp(cfg);
-    db = firebase.firestore();
-    // Modo 100% online: Firebase es la fuente principal y no conserva cola offline propia.
-    baseRef = db.collection("asistenciaOffline").doc(APP_ID);
-    legacyRef = baseRef.collection("registros");
+    db = firebase.database();
+    // Modo 100% online: Realtime Database es la fuente principal y no conserva cola offline propia.
+    baseRef = db.ref(`asistenciaOffline/${rtdbKey(APP_ID)}/registros`);
+    legacyRef = baseRef;
     return true;
   }
 
   async function deleteCollectionDocs(collectionName) {
-    const snapshot = await baseRef.collection(collectionName).get();
-    if (snapshot.empty) return;
-    let batch = db.batch();
-    let count = 0;
-    snapshot.forEach(doc => {
-      batch.delete(doc.ref);
-      count++;
-      if (count === 450) {
-        batch.commit();
-        batch = db.batch();
-        count = 0;
-      }
-    });
-    if (count) await batch.commit();
+    await baseRef.child(rtdbKey(collectionName)).remove();
   }
 
   async function deleteLegacyDocsForKey(key) {
@@ -994,17 +1022,17 @@
       key === "alumnosCI" ? "alumnosci" : ""
     ].filter(Boolean));
     for (const id of ids) {
-      try { await legacyRef.doc(id).delete(); }
+      try { await legacyRef.child(rtdbKey(id)).remove(); }
       catch (error) {}
     }
   }
 
   async function deleteLegacyCollection() {
-    const snapshot = await legacyRef.get();
-    if (snapshot.empty) return;
-    const batch = db.batch();
-    snapshot.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
+    await legacyRef.remove();
+  }
+
+  function recordRef(record) {
+    return baseRef.child(rtdbKey(record.collection)).child(rtdbKey(record.id));
   }
 
   async function writeItem(item) {
@@ -1014,19 +1042,19 @@
     let wrote = false;
 
     for (const record of records) {
-      const docRef = baseRef.collection(record.collection).doc(record.id);
+      const docRef = recordRef(record);
       const localUpdatedAt = Number(record.data.updatedAt || item.updatedAt || Date.now());
-      const remoteDoc = await docRef.get();
-      const remoteData = remoteDoc.exists ? (remoteDoc.data() || {}) : {};
+      const remoteSnap = await docRef.once("value");
+      const remoteData = remoteSnap.val() || {};
       const remoteUpdatedAt = Math.max(timestampToMillis(remoteData.updatedAt), timestampToMillis(remoteData.serverUpdatedAt));
       if (remoteUpdatedAt > localUpdatedAt) continue;
 
       await docRef.set({
-        ...record.data,
+        ...dataForDatabase(record.data),
         updatedAt: localUpdatedAt,
         deviceId: deviceId(),
         role: currentRole(),
-        serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
       });
       wrote = true;
     }
@@ -1047,19 +1075,19 @@
       .then(async () => {
         if (!baseRef && !(await initFirebase())) throw new Error("Firebase no esta listo para guardar.");
         setWorkMode(isTeacherRole() ? "docente-online" : "online");
-        setStatus("guardando-firestore");
+        setStatus("guardando-database");
         const wrote = await writeItem({ ...item, key });
         rawSetItem(STRUCTURE_KEY, STRUCTURE_VERSION);
         rawSetItem(LAST_SYNC_KEY, String(Date.now()));
         rawRemoveItem(LOCAL_DIRTY_KEY);
         writeQueue([]);
-        setStatus(wrote ? "guardado-firestore" : "sin-cambios-remotos");
+        setStatus(wrote ? "guardado-database" : "sin-cambios-remotos");
         return wrote;
       })
       .catch(error => {
         setLastError(error, `guardando ${key}`);
         setWorkMode("error-online");
-        setStatus("error-guardado-firestore");
+        setStatus("error-guardado-database");
         return false;
       });
 
@@ -1091,7 +1119,7 @@
   async function syncNow() {
     if (syncing) return;
     if (permissionBlocked) {
-      setStatus("sin-permisos-firestore");
+      setStatus("sin-permisos-database");
       return;
     }
     if (isViewerRole()) {
@@ -1107,7 +1135,7 @@
 
     syncing = true;
     try {
-      setStatus(activeWrites.size ? "guardando-firestore" : "online");
+      setStatus(activeWrites.size ? "guardando-database" : "online");
       if (activeWrites.size) await Promise.allSettled(Array.from(activeWrites.values()));
       writeQueue([]);
       rawSetItem(STRUCTURE_KEY, STRUCTURE_VERSION);
@@ -1121,17 +1149,18 @@
   }
 
   async function readCollection(collectionName) {
-    const snapshot = await baseRef.collection(collectionName).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() || {} }));
+    const snapshot = await baseRef.child(rtdbKey(collectionName)).once("value");
+    const data = snapshot.val() || {};
+    return Object.entries(data).map(([id, value]) => ({ id, data: value || {} }));
   }
 
   async function pullSingles(next) {
     for (const [key, spec] of Object.entries(SINGLE_KEYS)) {
-      const doc = await baseRef.collection(spec.collection).doc(spec.doc).get();
-      if (doc.exists) {
-        const data = doc.data() || {};
+      const snapshot = await baseRef.child(rtdbKey(spec.collection)).child(rtdbKey(spec.doc)).once("value");
+      if (snapshot.exists()) {
+        const data = snapshot.val() || {};
         next[key] = {
-          value: String(data.value ?? ""),
+          value: valueForLocalStorage(data.value, ""),
           updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
         };
       }
@@ -1145,7 +1174,7 @@
     let updatedAt = 0;
     docs.forEach(({ data, id }) => {
       const course = data.course || id;
-      obj[course] = parseJSON(data.value, {});
+      obj[course] = parseStoredValue(data.value, {});
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
     next[key] = { value: stringify(obj), updatedAt };
@@ -1157,7 +1186,7 @@
     const indexDocs = await readCollection("notas_index");
     const activeByScope = {};
     indexDocs.forEach(({ data }) => {
-      activeByScope[data.scopeId] = new Set(parseJSON(data.activeIds, []));
+      activeByScope[data.scopeId] = new Set(parseStoredValue(data.activeIds, []));
     });
 
     const current = parseJSON(next.notas?.value, {});
@@ -1174,7 +1203,7 @@
       if (!notes[course]) notes[course] = {};
       if (!notes[course][trimestre]) notes[course][trimestre] = {};
       if (!notes[course][trimestre][materia]) notes[course][trimestre][materia] = {};
-      notes[course][trimestre][materia][titulo] = parseJSON(data.value, {});
+      notes[course][trimestre][materia][titulo] = parseStoredValue(data.value, {});
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
 
@@ -1202,7 +1231,7 @@
     const obj = {};
     let updatedAt = 0;
     docs.forEach(({ data }) => {
-      Object.assign(obj, parseJSON(data.value, {}));
+      Object.assign(obj, parseStoredValue(data.value, {}));
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
 
@@ -1219,7 +1248,7 @@
       const detailDocs = await readCollection("asistencia_ediciones_detalle");
       detailDocs.forEach(({ data }) => {
         const entryKey = data.entryKey || [data.fecha, data.course].join("|");
-        obj[entryKey] = parseJSON(data.value, []);
+        obj[entryKey] = parseStoredValue(data.value, []);
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
       });
     }
@@ -1234,14 +1263,14 @@
       const indexDocs = await readCollection("actividades_index");
       const activeByScope = {};
       indexDocs.forEach(({ data }) => {
-        activeByScope[data.scopeId] = new Set(parseJSON(data.activeIds, []));
+        activeByScope[data.scopeId] = new Set(parseStoredValue(data.activeIds, []));
       });
       const activities = [];
       let updatedAt = 0;
       detailDocs.forEach(({ id, data }) => {
-        const scopeId = data.scopeId || activityScopeId(parseJSON(data.value, {}));
+        const activity = parseStoredValue(data.value, null);
+        const scopeId = data.scopeId || activityScopeId(activity || {});
         if (activeByScope[scopeId] && !activeByScope[scopeId].has(id)) return;
-        const activity = parseJSON(data.value, null);
         if (activity) activities.push(activity);
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
       });
@@ -1249,11 +1278,11 @@
       return;
     }
 
-    const full = await baseRef.collection("actividades").doc("todos").get();
-    if (full.exists) {
-      const data = full.data() || {};
+    const full = await baseRef.child("actividades").child("todos").once("value");
+    if (full.exists()) {
+      const data = full.val() || {};
       next.actividades = {
-        value: String(data.value ?? "[]"),
+        value: valueForLocalStorage(data.value, []),
         updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
       };
       return;
@@ -1264,7 +1293,7 @@
     const activities = [];
     let updatedAt = 0;
     [...hacer, ...saber].forEach(({ data }) => {
-      const list = parseJSON(data.value, []);
+      const list = parseStoredValue(data.value, []);
       if (Array.isArray(list)) activities.push(...list);
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
@@ -1276,7 +1305,7 @@
     docs.forEach(({ data, id }) => {
       const course = data.course || id;
       next[`${prefix}${course}`] = {
-        value: String(data.value ?? ""),
+        value: valueForLocalStorage(data.value, ""),
         updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
       };
     });
@@ -1285,7 +1314,7 @@
   function applyLegacyRecord(data, force) {
     const key = canonicalKey(data.key || "");
     if (!key || !shouldSync(key)) return false;
-    const value = data.operation === "remove" ? null : String(data.value ?? "");
+    const value = data.operation === "remove" ? null : valueForLocalStorage(data.value, "");
 
     if (data.scope === "course") return applyCoursePiece(key, data.course || "general", parseJSON(value, {}), "object", force);
     if (data.scope === "course-list") return applyCoursePiece(key, data.course || "general", parseJSON(value, []), "list", force);
@@ -1294,11 +1323,13 @@
   }
 
   async function pullLegacy(force) {
-    const snapshot = await legacyRef.get();
+    const snapshot = await legacyRef.once("value");
+    const records = snapshot.val() || {};
     let changed = false;
-    snapshot.forEach(doc => {
-      const data = doc.data() || {};
-      if (!data.key) data.key = canonicalKey(decodeURIComponent(doc.id));
+    Object.entries(records).forEach(([id, data]) => {
+      if (!data || typeof data !== "object" || Array.isArray(data)) return;
+      if (!data.key && !Object.prototype.hasOwnProperty.call(data, "value")) return;
+      if (!data.key) data.key = canonicalKey(decodeURIComponent(id));
       if (applyLegacyRecord(data, force)) changed = true;
     });
     return changed;
@@ -1341,7 +1372,7 @@
       }
       return changed;
     } catch (error) {
-      setLastError(error, "descargando firestore");
+      setLastError(error, "descargando database");
       return false;
     }
   }
@@ -1375,7 +1406,7 @@
 
   function scheduleSync(delay = null) {
     if (permissionBlocked) {
-      setStatus("sin-permisos-firestore");
+      setStatus("sin-permisos-database");
       return;
     }
     if (isViewerRole()) {
@@ -1415,14 +1446,14 @@
 
     if (baseRef && navigator.onLine && !isViewerRole()) {
       try {
-        await baseRef.collection("diagnostico").doc(currentRole() || "sin_rol").set({
+        await baseRef.child("diagnostico").child(rtdbKey(currentRole() || "sin_rol")).set({
           rol: currentRole(),
-          at: firebase.firestore.FieldValue.serverTimestamp()
+          at: firebase.database.ServerValue.TIMESTAMP
         });
-        info.pruebaFirestore = "ok";
+        info.pruebaDatabase = "ok";
       } catch (error) {
         setLastError(error, "prueba diagnostico");
-        info.pruebaFirestore = `${error.code || ""} ${error.message || error}`;
+        info.pruebaDatabase = `${error.code || ""} ${error.message || error}`;
       }
     }
 
@@ -1463,18 +1494,18 @@
           .map(activityDocId)
       : [];
     const updatedAt = Date.now();
-    await baseRef.collection("actividades_detalle").doc(id).delete();
-    await baseRef.collection("actividades_index").doc(scopeId).set({
+    await baseRef.child("actividades_detalle").child(rtdbKey(id)).remove();
+    await baseRef.child("actividades_index").child(rtdbKey(scopeId)).set({
       key: "actividades",
       scopeId,
       course: normalized.curso,
       materia: normalized.materia || "",
-      activeIds: stringify([...new Set(activeIds)]),
+      activeIds: [...new Set(activeIds)],
       operation: "set",
       updatedAt,
       deviceId: deviceId(),
       role: currentRole(),
-      serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
     });
     setPackageMeta("actividades", updatedAt, "synced");
     return true;
@@ -1494,19 +1525,19 @@
     const materiaNotas = current?.[course]?.[trimestre]?.[materia] || {};
     const activeIds = Object.keys(materiaNotas).map(title => noteDocId(course, trimestre, materia, title));
     const updatedAt = Date.now();
-    await baseRef.collection("notas_detalle").doc(id).delete();
-    await baseRef.collection("notas_index").doc(scopeId).set({
+    await baseRef.child("notas_detalle").child(rtdbKey(id)).remove();
+    await baseRef.child("notas_index").child(rtdbKey(scopeId)).set({
       key: "notas",
       scopeId,
       course,
       trimestre,
       materia,
-      activeIds: stringify([...new Set(activeIds)]),
+      activeIds: [...new Set(activeIds)],
       operation: "set",
       updatedAt,
       deviceId: deviceId(),
       role: currentRole(),
-      serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
     });
     setPackageMeta("notas", updatedAt, "synced");
     return true;
