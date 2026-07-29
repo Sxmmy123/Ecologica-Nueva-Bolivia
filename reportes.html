@@ -82,14 +82,15 @@
     .bar-faltas { background:linear-gradient(90deg, #f08a95, #dc3545); }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v89"></script>
+  <script src="firebase-sync.js?v=online-v90"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v89"></script>
+  <script defer src="pwa.js?v=online-v90"></script>
 </head>
 <body>
 <script>
@@ -169,9 +170,10 @@
   }
 
   function cerrarSesion() {
-    sessionStorage.clear();
-    window.location.href = "index.html";
-  }
+      if (window.cerrarSesionFirebase) return window.cerrarSesionFirebase();
+      sessionStorage.clear();
+      window.location.href = "index.html";
+    }
 
   function directorNavbarHTML() {
     const item = (clave, href, icono, titulo) => `<a class="${clave === "reportes" ? "active" : ""}" href="${href}" title="${titulo}" aria-label="${titulo}"><i class="bi ${icono}"></i></a>`;

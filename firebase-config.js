@@ -13,3 +13,6 @@ window.firebaseConfig = {
 
 // Este nombre separa los respaldos si despues tienes otra unidad educativa.
 window.APP_SYNC_ID = "proyecto1";
+
+// Correos autorizados para entrar como administrador desde Firebase Authentication.
+window.ADMIN_AUTH_EMAILS = ["samuel@ecologica.com"];

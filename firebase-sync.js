@@ -1465,6 +1465,20 @@
     syncNow();
   };
 
+  window.cerrarSesionFirebase = async function () {
+    const authEmail = sessionStorage.getItem("adminAuthEmail");
+    sessionStorage.clear();
+    try {
+      if (authEmail && window.firebase?.auth) {
+        if (!firebase.apps.length && window.firebaseConfig?.apiKey) firebase.initializeApp(window.firebaseConfig);
+        await firebase.auth().signOut();
+      }
+    } catch (error) {
+      console.info("No se pudo cerrar Firebase Auth:", error.message);
+    }
+    window.location.href = "index.html";
+  };
+
   window.firebaseMarkPackage = function (key) {
     const normalized = canonicalKey(key);
     if (!shouldSync(normalized) || !canWriteKey(normalized)) return Promise.resolve(false);
