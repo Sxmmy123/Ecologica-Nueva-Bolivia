@@ -194,12 +194,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v88"></script>
+  <script src="firebase-sync.js?v=online-v89"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v88"></script>
+  <script defer src="pwa.js?v=online-v89"></script>
 </head>
 <body>
   <script>
@@ -974,7 +974,7 @@
             ${layoutVista.cols}
             <thead>
               <tr>
-                <th class="index-col">N°</th>
+                <th class="index-col">NÂ°</th>
                 <th class="alumno">Alumno</th>
                 <th colspan="${5 + criterios.length}" class="gR">SER 10 <button class="btn btn-sm btn-light ms-1" onclick="agregarCriterioSer()">+</button></th>
                 <th colspan="${Math.max(1, examenes.length + 2)}" class="gS">SABER 45</th>
@@ -1038,7 +1038,7 @@
           <table class="table table-bordered table-sm notas-table" style="${layoutVista.style}">
             ${layoutVista.cols}
             <thead><tr>
-              <th class="index-col">N°</th>
+              <th class="index-col">NÂ°</th>
               <th class="alumno">Alumno</th>
               <th class="gF">1er Trimestre</th>
               <th class="gF">2do Trimestre</th>
@@ -1079,9 +1079,9 @@
     function campoImpresion(materia) {
       const texto = String(materia || "").toLowerCase();
       if (/matem/.test(texto)) return "CIENCIA TECNOLOGIA Y PRODUCCION";
-      if (/lenguaje|sociales|religion|música|musica|artes/.test(texto)) return "COMUNIDAD Y SOCIEDAD";
+      if (/lenguaje|sociales|religion|mÃºsica|musica|artes/.test(texto)) return "COMUNIDAD Y SOCIEDAD";
       if (/naturales/.test(texto)) return "VIDA TIERRA TERRITORIO";
-      if (/fisica|física/.test(texto)) return "VIDA TIERRA TERRITORIO";
+      if (/fisica|fÃ­sica/.test(texto)) return "VIDA TIERRA TERRITORIO";
       return "COMUNIDAD Y SOCIEDAD";
     }
 

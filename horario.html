@@ -76,12 +76,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=online-v88"></script>
+  <script src="firebase-sync.js?v=online-v89"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=online-v88"></script>
+  <script defer src="pwa.js?v=online-v89"></script>
 </head>
 <body>
 <script>
@@ -141,11 +141,11 @@
     <table id="tablaHorario" class="table table-bordered bg-white">
       <thead>
         <tr>
-          <th>Per韔do</th>
+          <th>Per铆odo</th>
           <th>Hora</th>
           <th>Lunes</th>
           <th>Martes</th>
-          <th>Mi閞coles</th>
+          <th>Mi茅rcoles</th>
           <th>Jueves</th>
           <th>Viernes</th>
         </tr>
@@ -155,9 +155,9 @@
   </div>
 
   <div class="mt-3 d-flex flex-wrap gap-2">
-    <button class="btn btn-warning fw-bold" id="btnEditar"><i class="bi bi-pencil-fill"></i> Habilitar edici髇</button>
+    <button class="btn btn-warning fw-bold" id="btnEditar"><i class="bi bi-pencil-fill"></i> Habilitar edici贸n</button>
     <button class="btn btn-success hidden fw-bold" id="btnAgregarFila"><i class="bi bi-plus-lg"></i> Agregar hora</button>
-    <button class="btn btn-danger hidden fw-bold" id="btnEliminarFila"><i class="bi bi-trash3-fill"></i> Eliminar 鷏tima hora</button>
+    <button class="btn btn-danger hidden fw-bold" id="btnEliminarFila"><i class="bi bi-trash3-fill"></i> Eliminar 煤ltima hora</button>
     <button class="btn btn-primary hidden fw-bold" id="btnGuardar"><i class="bi bi-save-fill"></i> Guardar cambios</button>
     <button class="btn btn-outline-secondary hidden fw-bold" id="btnNoGuardar"><i class="bi bi-x-circle"></i> No guardar</button>
   </div>
@@ -166,29 +166,29 @@
 <script>
   const QUITAR_MATERIA = "__QUITAR_MATERIA__";
   const materiasDisponibles = [
-    "Matem醫ica",
+    "Matem谩tica",
     "Lenguaje",
     "Ciencias Naturales",
     "Ciencias Sociales",
-    "Educaci髇 F韘ica",
-    "Religi髇",
-    "M鷖ica",
-    "Artes Pl醩ticas",
-    "T閏nica Tecnol骻ica"
+    "Educaci贸n F铆sica",
+    "Religi贸n",
+    "M煤sica",
+    "Artes Pl谩sticas",
+    "T茅cnica Tecnol贸gica"
   ];
   const materiasAlias = {
     "Comunicacion y Lenguajes": "Lenguaje",
-    "Comunicaci髇 y Lenguajes": "Lenguaje",
-    "Educacion Fisica y Deportes": "Educaci髇 F韘ica",
-    "Educaci髇 F韘ica y Deportes": "Educaci髇 F韘ica",
-    "Educacion Musical": "M鷖ica",
-    "Artes Plasticas y Visuales": "Artes Pl醩ticas",
-    "Artes Pl醩ticas y Visuales": "Artes Pl醩ticas",
-    "Matematica": "Matem醫ica",
-    "Tecnologia Tecnologica": "T閏nica Tecnol骻ica",
-    "Tecnolog韆 Tecnol骻ica": "T閏nica Tecnol骻ica",
-    "Valores Espirituales y Religion": "Religi髇",
-    "Valores Espirituales y Religi髇": "Religi髇"
+    "Comunicaci贸n y Lenguajes": "Lenguaje",
+    "Educacion Fisica y Deportes": "Educaci贸n F铆sica",
+    "Educaci贸n F铆sica y Deportes": "Educaci贸n F铆sica",
+    "Educacion Musical": "M煤sica",
+    "Artes Plasticas y Visuales": "Artes Pl谩sticas",
+    "Artes Pl谩sticas y Visuales": "Artes Pl谩sticas",
+    "Matematica": "Matem谩tica",
+    "Tecnologia Tecnologica": "T茅cnica Tecnol贸gica",
+    "Tecnolog铆a Tecnol贸gica": "T茅cnica Tecnol贸gica",
+    "Valores Espirituales y Religion": "Religi贸n",
+    "Valores Espirituales y Religi贸n": "Religi贸n"
   };
   const coloresMateria = ["#0d6efd", "#198754", "#dc3545", "#6f42c1", "#fd7e14", "#20c997", "#0dcaf0", "#d63384", "#6c757d", "#795548"];
   const dias = ["lunes", "martes", "miercoles", "jueves", "viernes"];
