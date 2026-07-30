@@ -40,6 +40,8 @@
     .assignment-pill { background:#f1f7ff; border:1px solid #cfe2ff; border-radius:8px; color:#12355b; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 11px; font-weight:850; }
     .docente-row { cursor:pointer; }
     .docente-row:hover td { background:#f3f8ff; }
+    .docente-inactivo td { color:#6c757d; background:#f8f9fa; }
+    .teacher-badge { border-radius:999px; font-size:11px; font-weight:900; margin-left:6px; padding:3px 7px; }
     textarea { min-height:220px; font-family:Consolas, monospace; }
     .ci-pill { background:#eef5ff; border:1px solid #cfe2ff; border-radius:999px; color:#12355b; font-weight:800; padding:3px 8px; }
     .credential { font-family:Consolas, monospace; font-weight:800; }
@@ -58,12 +60,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v0.91"></script>
+  <script src="firebase-sync.js?v=v1.0"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v0.91"></script>
+  <script defer src="pwa.js?v=v1.0"></script>
 </head>
 <body>
   <script>
@@ -285,6 +287,39 @@
     </div>
   </div>
 
+
+
+  <div class="modal fade" id="modalReemplazoDocente" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-arrow-repeat"></i> Reemplazar docente</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="reemplazoDocenteIndex">
+          <div class="modal-help mb-3" id="reemplazoDocenteSalida"></div>
+          <label class="form-label fw-bold" for="reemplazoNombre">Nombre del nuevo docente</label>
+          <input id="reemplazoNombre" class="form-control mb-2">
+          <label class="form-label fw-bold" for="reemplazoUsuario">Usuario</label>
+          <input id="reemplazoUsuario" class="form-control mb-2">
+          <label class="form-label fw-bold" for="reemplazoClave">Contrasena</label>
+          <input id="reemplazoClave" class="form-control mb-2">
+          <label class="form-label fw-bold" for="reemplazoClaveConfirmar">Confirmar contrasena</label>
+          <input id="reemplazoClaveConfirmar" class="form-control mb-3">
+          <div class="form-check fw-bold">
+            <input class="form-check-input" type="checkbox" id="reemplazoMantener" checked>
+            <label class="form-check-label" for="reemplazoMantener">Mantener los mismos cursos y materias</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary fw-bold" onclick="guardarReemplazoDocente()">Guardar reemplazo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const CURSOS_DEFAULT = [
@@ -318,6 +353,7 @@
     let modalAlumnos = null;
     let modalDirector = null;
     let modalDetalleDocente = null;
+    let modalReemplazoDocente = null;
 
     function leerJSON(clave, inicial = {}) {
       try { return JSON.parse(localStorage.getItem(clave) || JSON.stringify(inicial)); }
@@ -687,12 +723,14 @@
         nombre,
         usuario,
         clave,
+        activo: true,
         asignaciones,
         curso: asignaciones[0].curso,
         materias: asignaciones[0].materias,
         materia: asignaciones[0].materias[0]
       });
       guardarJSON("docentes", docentes);
+      recalcularHorariosDocentes(docentes);
 
       document.getElementById("docenteNombre").value = "";
       document.getElementById("docenteUsuario").value = "";
@@ -706,10 +744,14 @@
     }
 
     function eliminarDocente(index) {
-      if (!confirm("Esta seguro que desea eliminar este docente?")) return;
+      if (!confirm("Esta seguro que desea deshabilitar este docente? Su historial se conservara.")) return;
       const docentes = leerJSON("docentes", []);
-      docentes.splice(index, 1);
+      const docente = docentes[index];
+      if (!docente) return;
+      docente.activo = false;
+      docente.fechaSalida = new Date().toISOString();
       guardarJSON("docentes", docentes);
+      recalcularHorariosDocentes(docentes);
       renderDocentes();
     }
 
@@ -722,6 +764,62 @@
       docente.clave = nueva.trim();
       guardarJSON("docentes", docentes);
       renderDocentes();
+    }
+
+    function recalcularHorariosDocentes(docentes = leerJSON("docentes", [])) {
+      if (typeof window.rebuildTeacherSchedules === "function") window.rebuildTeacherSchedules(docentes);
+    }
+
+    function abrirReemplazoDocente(index) {
+      const docentes = leerJSON("docentes", []);
+      const docente = docentes[index];
+      if (!docente) return;
+      document.getElementById("reemplazoDocenteIndex").value = String(index);
+      document.getElementById("reemplazoDocenteSalida").innerHTML = `<strong>Docente saliente:</strong> ${escapar(docente.nombre)}<br><span class="text-muted">El usuario anterior quedara deshabilitado y su historial se conserva.</span>`;
+      document.getElementById("reemplazoNombre").value = "";
+      document.getElementById("reemplazoUsuario").value = "";
+      document.getElementById("reemplazoClave").value = "";
+      document.getElementById("reemplazoClaveConfirmar").value = "";
+      document.getElementById("reemplazoMantener").checked = true;
+      modalReemplazoDocente.show();
+    }
+
+    function guardarReemplazoDocente() {
+      const index = Number(document.getElementById("reemplazoDocenteIndex").value);
+      const nombre = document.getElementById("reemplazoNombre").value.trim();
+      const usuario = document.getElementById("reemplazoUsuario").value.trim();
+      const clave = document.getElementById("reemplazoClave").value.trim();
+      const confirmar = document.getElementById("reemplazoClaveConfirmar").value.trim();
+      const mantener = document.getElementById("reemplazoMantener").checked;
+      if (!nombre || !usuario || !clave) return alert("Complete los datos del nuevo docente.");
+      if (clave !== confirmar) return alert("La confirmacion de contrasena no coincide.");
+      const docentes = leerJSON("docentes", []);
+      const saliente = docentes[index];
+      if (!saliente) return;
+      if (docentes.some((docente, i) => i !== index && docente.usuario === usuario)) return alert("Ese usuario docente ya existe.");
+      const asignaciones = mantener ? asignacionesDocente(saliente) : [];
+      if (!asignaciones.length) return alert("El docente saliente no tiene cursos ni materias para transferir.");
+      saliente.activo = false;
+      saliente.fechaSalida = new Date().toISOString();
+      saliente.reemplazadoPor = usuario;
+      docentes.push({
+        nombre,
+        usuario,
+        clave,
+        activo: true,
+        activo: true,
+        fechaIngreso: new Date().toISOString(),
+        reemplazaA: saliente.usuario,
+        asignaciones,
+        curso: asignaciones[0].curso,
+        materias: asignaciones[0].materias,
+        materia: asignaciones[0].materias[0]
+      });
+      guardarJSON("docentes", docentes);
+      recalcularHorariosDocentes(docentes);
+      modalReemplazoDocente.hide();
+      renderDocentes();
+      alert("Docente reemplazado correctamente. El anterior quedo deshabilitado.");
     }
 
     function miniHorarioAsignacion(asig) {
@@ -789,9 +887,14 @@
             ${docentes.map((d, i) => {
               const asignaciones = asignacionesDocente(d);
               const cursos = [...new Set(asignaciones.map(asig => asig.curso))].join(", ");
+              const activo = d.activo !== false;
+              const badge = activo
+                ? '<span class="teacher-badge bg-success-subtle text-success-emphasis">Activo</span>'
+                : '<span class="teacher-badge bg-secondary-subtle text-secondary-emphasis">Inactivo</span>';
+              const reemplazo = d.reemplazadoPor ? `<span class="teacher-badge bg-info-subtle text-info-emphasis">Reemplazado</span>` : "";
               return `
-                <tr class="docente-row" onclick="abrirDetalleDocente(${i})">
-                  <td class="fw-bold">${escapar(d.nombre)}</td>
+                <tr class="docente-row ${activo ? "" : "docente-inactivo"}" onclick="abrirDetalleDocente(${i})">
+                  <td class="fw-bold">${escapar(d.nombre)} ${badge} ${reemplazo}</td>
                   <td>${escapar(cursos)}</td>
                   <td class="credential">${escapar(d.usuario)}</td>
                   <td class="credential">${escapar(d.clave)}</td>
@@ -799,7 +902,8 @@
                   <td class="text-center">
                     <div class="d-flex justify-content-center gap-1">
                       <button class="btn btn-sm btn-outline-primary" title="Cambiar contrasena" onclick="event.stopPropagation(); cambiarClaveDocente(${i})"><i class="bi bi-key-fill"></i></button>
-                      <button class="btn btn-sm btn-outline-danger" title="Eliminar docente" onclick="event.stopPropagation(); eliminarDocente(${i})"><i class="bi bi-trash3-fill"></i></button>
+                      ${activo ? `<button class="btn btn-sm btn-outline-warning" title="Reemplazar docente" onclick="event.stopPropagation(); abrirReemplazoDocente(${i})"><i class="bi bi-arrow-repeat"></i></button>` : ""}
+                      ${activo ? `<button class="btn btn-sm btn-outline-danger" title="Deshabilitar docente" onclick="event.stopPropagation(); eliminarDocente(${i})"><i class="bi bi-person-dash-fill"></i></button>` : ""}
                     </div>
                   </td>
                 </tr>

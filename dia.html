@@ -309,12 +309,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v0.91"></script>
+  <script src="firebase-sync.js?v=v1.0"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v0.91"></script>
+  <script defer src="pwa.js?v=v1.0"></script>
 </head>
 <body>
 <script>
@@ -804,7 +804,7 @@
     return sessionStorage.getItem("sesionRol") === "docente" && !navigator.onLine;
   }
 
-  function mostrarBloqueoAsistenciaOffline() {
+  function mostrarBloqueoAsistenciaSinInternet() {
     const detalleContainer = document.getElementById("detalleCursos");
     if (detalleContainer) {
       detalleContainer.innerHTML = `
@@ -1186,7 +1186,7 @@
     const subtitulo = document.querySelector("#slideContainer h6");
     if (subtitulo) subtitulo.textContent = "Codigo de colores";
     if (docenteSinInternet()) {
-      mostrarBloqueoAsistenciaOffline();
+      mostrarBloqueoAsistenciaSinInternet();
       return;
     }
     const fecha = new Date(anio, mes - 1, dia);
@@ -1275,7 +1275,7 @@
           if (editable) {
             divAlumno.onclick = () => {
               if (docenteSinInternet()) {
-                mostrarBloqueoAsistenciaOffline();
+                mostrarBloqueoAsistenciaSinInternet();
                 return;
               }
               const nuevoEstado = obtenerSiguienteEstado(estado);
@@ -1302,7 +1302,7 @@
       btnEditar.textContent = "Editar asistencia";
       btnEditar.onclick = () => {
         if (docenteSinInternet()) {
-          mostrarBloqueoAsistenciaOffline();
+          mostrarBloqueoAsistenciaSinInternet();
           return;
         }
         mostrarInformacion(true);
@@ -1326,7 +1326,7 @@
   if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
   else mostrarInformacion();
   window.addEventListener("offline", () => {
-    if (esDocente() && !esModoResumenDocente()) mostrarBloqueoAsistenciaOffline();
+    if (esDocente() && !esModoResumenDocente()) mostrarBloqueoAsistenciaSinInternet();
   });
   window.addEventListener("online", () => {
     const overlay = document.getElementById("internetRequiredOverlay");

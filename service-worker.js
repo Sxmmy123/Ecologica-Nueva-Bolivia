@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "nueva-bolivia-pwa-";
-const CACHE_NAME = "nueva-bolivia-pwa-v0.91";
+const CACHE_NAME = "nueva-bolivia-pwa-v1.0";
 
 const CORE_ASSETS = [
   "./",
@@ -13,8 +13,8 @@ const CORE_ASSETS = [
   "./alumno.html",
   "./reportes.html",
   "./firebase-config.js",
-  "./firebase-sync.js?v=v0.91",
-  "./pwa.js?v=v0.91",
+  "./firebase-sync.js?v=v1.0",
+  "./pwa.js?v=v1.0",
   "./manifest.json",
   "./images/login-fondo.png",
   "./images/logo-nueva-bolivia.png",

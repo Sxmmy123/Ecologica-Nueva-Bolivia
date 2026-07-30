@@ -2,6 +2,7 @@
   "use strict";
 
   const APP_ID = window.APP_SYNC_ID || "apk-asistencia-colegio";
+  const DATABASE_ROOT = "sistemaEscolar";
   const PENDING_KEY = "__firebasePendingChanges";
   const LAST_SYNC_KEY = "__firebaseLastSyncAt";
   const LAST_PULL_KEY = "__firebaseLastPullAt";
@@ -59,6 +60,7 @@
 
   const COURSE_STORAGE_PREFIXES = [
     { prefix: "horario_", collection: "horarios" },
+    { prefix: "horarioDocente_", collection: "horarios_docente", normalizeCourse: false },
     { prefix: "materias_", collection: "materias" },
     { prefix: "materiasPersonalizadas_", collection: "materias_personalizadas" },
     { prefix: "materiaColores_", collection: "materia_colores" },
@@ -339,6 +341,7 @@
       const key = canonicalKey(localStorage.key(i));
       const spec = COURSE_STORAGE_PREFIXES.find(item => key.startsWith(item.prefix));
       if (!spec) continue;
+      if (spec.normalizeCourse === false) continue;
       const course = key.slice(spec.prefix.length);
       const normalized = normalizeCourseName(course);
       if (normalized && normalized !== course) pairs.push({ oldKey: key, newKey: `${spec.prefix}${normalized}` });
@@ -1006,7 +1009,7 @@
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     db = firebase.database();
     // Modo 100% online: Realtime Database es la fuente principal y no conserva cola offline propia.
-    baseRef = db.ref(`asistenciaOffline/${rtdbKey(APP_ID)}/registros`);
+    baseRef = db.ref(`${DATABASE_ROOT}/${rtdbKey(APP_ID)}/registros`);
     legacyRef = baseRef;
     return true;
   }
@@ -1361,7 +1364,7 @@
     try {
       setStatus("descargando");
       const force = true;
-      const legacyChanged = await pullLegacy(force);
+      const legacyChanged = false;
       const structuredChanged = await pullStructured(force);
       const normalizedChanged = normalizeCourseStorage(!isViewerRole());
       const changed = legacyChanged || structuredChanged || normalizedChanged;
@@ -1423,6 +1426,86 @@
     const wait = delay === null ? 900 : delay;
     syncTimer = setTimeout(syncNow, wait);
   }
+
+
+  function localJSON(key, fallback) {
+    return parseJSON(rawGetItem(key), fallback);
+  }
+
+  function teacherScheduleKey(usuario) {
+    return `horarioDocente_${String(usuario || "").trim()}`;
+  }
+
+  function teacherAssignments(docente) {
+    if (Array.isArray(docente?.asignaciones) && docente.asignaciones.length) {
+      return docente.asignaciones.map(asig => ({
+        curso: normalizeCourseName(asig.curso),
+        materias: Array.isArray(asig.materias) ? [...new Set(asig.materias.filter(Boolean))] : []
+      })).filter(asig => asig.curso && asig.materias.length);
+    }
+    const materias = Array.isArray(docente?.materias) && docente.materias.length
+      ? docente.materias
+      : [docente?.materia].filter(Boolean);
+    return docente?.curso && materias.length ? [{ curso: normalizeCourseName(docente.curso), materias }] : [];
+  }
+
+  function buildTeacherSchedule(docente) {
+    const asignaciones = teacherAssignments(docente);
+    const dias = ["lunes", "martes", "miercoles", "jueves", "viernes"];
+    const horarios = asignaciones.map(asig => {
+      const materias = new Set(asig.materias || []);
+      const horarioCurso = localJSON(`horario_${asig.curso}`, []);
+      const filas = Array.isArray(horarioCurso) ? horarioCurso.map(fila => {
+        const next = {
+          periodo: fila?.periodo || "",
+          hora: fila?.hora || "",
+          recreo: Boolean(fila?.recreo)
+        };
+        let tieneMateria = false;
+        dias.forEach(dia => {
+          const materia = fila?.[dia] || "";
+          next[dia] = materias.has(materia) ? materia : "";
+          if (next[dia]) tieneMateria = true;
+        });
+        return tieneMateria || next.recreo ? next : null;
+      }).filter(Boolean) : [];
+      return { curso: asig.curso, materias: [...materias], filas };
+    });
+
+    return {
+      usuario: docente?.usuario || "",
+      nombre: docente?.nombre || "",
+      activo: docente?.activo !== false,
+      actualizadoEn: Date.now(),
+      asignaciones,
+      horarios
+    };
+  }
+
+  window.rebuildTeacherSchedules = function (docentesArg = null) {
+    const docentes = Array.isArray(docentesArg) ? docentesArg : localJSON("docentes", []);
+    if (!Array.isArray(docentes)) return false;
+    const activeKeys = new Set();
+    docentes.forEach(docente => {
+      if (!docente?.usuario) return;
+      const key = teacherScheduleKey(docente.usuario);
+      if (docente.activo === false) {
+        localStorage.removeItem(key);
+        return;
+      }
+      activeKeys.add(key);
+      localStorage.setItem(key, stringify(buildTeacherSchedule(docente)));
+    });
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("horarioDocente_") && !activeKeys.has(key)) localStorage.removeItem(key);
+    }
+    return true;
+  };
+
+  window.getPreparedTeacherSchedule = function (usuario) {
+    return localJSON(teacherScheduleKey(usuario), null);
+  };
 
   window.firebaseSyncNow = syncNow;
   window.firebaseRetryPermissions = function () {
@@ -1583,10 +1666,7 @@
       if (!baseRef && !(await initFirebase())) return;
       const role = currentRole();
 
-      if (!role) {
-        await pullRemoteOnStart();
-        return;
-      }
+      if (!role) return;
 
       if (isViewerRole()) {
         await pullRemoteOnStart();
@@ -1606,6 +1686,7 @@
       if (!(await initFirebase())) return;
       booting = false;
       const role = currentRole();
+      if (!role) return;
       normalizeCourseStorage(Boolean(role) && !isViewerRole());
 
       if (role && !isViewerRole()) {
