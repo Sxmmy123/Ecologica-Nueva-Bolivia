@@ -309,12 +309,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v1.2"></script>
+  <script src="firebase-sync.js?v=v1.9"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v1.2"></script>
+  <script defer src="pwa.js?v=v1.9"></script>
 </head>
 <body>
 <script>
@@ -603,9 +603,14 @@
         <div class="small text-muted fw-bold">${soloLectura ? `Visualizando registros de ${etiquetaTrimestre(actual)}.` : `Los registros nuevos se guardaran en ${etiquetaTrimestre(actual)}.`}</div>
       </div>
       ${controlesModoAsistenciaDocente()}
-      <button class="trimestre-current" type="button" data-bs-toggle="modal" data-bs-target="#modalTrimestre">
-        <i class="bi bi-pencil-square"></i> ${etiquetaTrimestre(actual)}
-      </button>
+      <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+        <button class="trimestre-current" type="button" onclick="abrirExportarAsistenciaExcel()" title="Exportar asistencia a Excel">
+          <i class="bi bi-file-earmark-spreadsheet-fill"></i> Excel
+        </button>
+        <button class="trimestre-current" type="button" data-bs-toggle="modal" data-bs-target="#modalTrimestre">
+          <i class="bi bi-pencil-square"></i> ${etiquetaTrimestre(actual)}
+        </button>
+      </div>
     `;
     renderModalTrimestre();
   }
@@ -971,6 +976,23 @@
     return cursos;
   }
 
+  function datosResumenAsistencia(curso, trimestre) {
+    const alumnos = nombresAlumnosCurso(curso);
+    const asistencias = JSON.parse(localStorage.getItem("asistencias")) || {};
+    const trimestresAsistencia = JSON.parse(localStorage.getItem("trimestresAsistencia")) || {};
+    const fechasRegistradas = [...new Set(Object.keys(asistencias)
+      .map(clave => clave.split("|"))
+      .filter(partes => partes.length >= 3 && partes[1] === curso)
+      .map(partes => partes[0])
+      .filter(fecha => fechaEsHabil(fecha))
+      .filter(fecha => (trimestresAsistencia[fecha] || "") === trimestre)
+      .filter(fecha => alumnos.some(nombre => cuentaComoRegistro(asistencias[fecha + "|" + curso + "|" + nombre] || "blanco")))
+    )].sort();
+    const meses = grupoMeses(fechasRegistradas);
+    const mesesOrdenados = Object.keys(meses).sort();
+    return { alumnos, asistencias, fechasRegistradas, meses, mesesOrdenados, totalColumnasFechas: fechasRegistradas.length };
+  }
+
   function mostrarAsistenciaMensual() {
     actualizarClaseModoAsistencia();
     document.querySelectorAll("#slideContainer > .d-flex.justify-content-between.mb-3").forEach(el => el.style.display = "none");
@@ -997,19 +1019,8 @@
       return;
     }
 
-    const alumnos = nombresAlumnosCurso(cursoVistaActual);
-    const fechasRegistradas = [...new Set(Object.keys(asistencias)
-      .map(clave => clave.split("|"))
-      .filter(partes => partes.length >= 3 && partes[1] === cursoVistaActual)
-      .map(partes => partes[0])
-      .filter(fecha => fechaEsHabil(fecha))
-      .filter(fecha => (trimestresAsistencia[fecha] || "") === trimestre)
-      .filter(fecha => alumnos.some(nombre => cuentaComoRegistro(asistencias[`${fecha}|${cursoVistaActual}|${nombre}`] || "blanco")))
-    )].sort();
-
-    const meses = grupoMeses(fechasRegistradas);
-    const mesesOrdenados = Object.keys(meses).sort();
-    const totalColumnasFechas = fechasRegistradas.length;
+    const resumen = datosResumenAsistencia(cursoVistaActual, trimestre);
+    const { alumnos, fechasRegistradas, meses, mesesOrdenados, totalColumnasFechas } = resumen;
     const estiloTabla = estiloTablaAsistencia(alumnos, totalColumnasFechas);
 
     let html = `
@@ -1039,7 +1050,7 @@
         <button class="btn btn-outline-dark btn-sm" type="button" onclick="imprimirResumenAsistencia()">
           <i class="bi bi-printer-fill"></i> Imprimir
         </button>
-        <button class="btn btn-success btn-sm" type="button" onclick="exportarResumenAsistenciaExcel()">
+        <button class="btn btn-success btn-sm" type="button" onclick="abrirExportarAsistenciaExcel()">
           <i class="bi bi-file-earmark-spreadsheet-fill"></i> Excel
         </button>
       </div>
@@ -1089,85 +1100,7 @@
     activarSeleccionFilasAsistencia();
   }
 
-  function nombreArchivoSeguro(texto) {
-    return String(texto || "")
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/gi, "_")
-      .replace(/^_+|_+$/g, "")
-      .toLowerCase();
-  }
-
-  function tablaResumenAsistenciaActual() {
-    return document.querySelector("#detalleCursos .attendance-table");
-  }
-
-  function tituloResumenAsistencia() {
-    return `Asistencia - ${cursoVistaActual || "Curso"} - ${etiquetaTrimestre(trimestreActual())}`;
-  }
-
-  function imprimirResumenAsistencia() {
-    const tabla = tablaResumenAsistenciaActual();
-    if (!tabla) return alert("No hay tabla de asistencia para imprimir.");
-    const ventana = window.open("", "_blank");
-    if (!ventana) return alert("No se pudo abrir la ventana de impresion.");
-    ventana.document.write(`
-      <!doctype html>
-      <html lang="es">
-      <head>
-        <meta charset="UTF-8">
-        <title>${escaparHTML(tituloResumenAsistencia())}</title>
-        <style>
-          @page { size: letter landscape; margin: 8mm; }
-          body { color:#111; font-family:Arial, sans-serif; margin:0; }
-          h1 { font-size:16px; margin:0 0 4px; text-align:center; }
-          .meta { font-size:11px; font-weight:700; margin-bottom:8px; text-align:center; }
-          table { border-collapse:collapse; font-size:9px; width:100%; }
-          th, td { border:1px solid #222; padding:3px 4px; text-align:center; vertical-align:middle; }
-          th { background:#e9eef5; font-weight:900; }
-          .student-col { text-align:left; white-space:nowrap; }
-          .estado-verde { background:#d4edda; }
-          .estado-amarillo { background:#fff3cd; }
-          .estado-morado { background:#e0c3fc; }
-          .estado-rojo, .estado-blanco { background:#f8d7da; }
-          .total-cell { background:#f8fafc; font-weight:900; }
-        </style>
-      </head>
-      <body>
-        <h1>${escaparHTML(tituloResumenAsistencia())}</h1>
-        <div class="meta">Generado: ${new Date().toLocaleString("es-BO")}</div>
-        ${tabla.outerHTML}
-      </body>
-      </html>
-    `);
-    ventana.document.close();
-    ventana.focus();
-    setTimeout(() => {
-      ventana.print();
-      ventana.close();
-    }, 250);
-  }
-
-  function exportarResumenAsistenciaExcel() {
-    const tabla = tablaResumenAsistenciaActual();
-    if (!tabla) return alert("No hay tabla de asistencia para exportar.");
-    const html = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="UTF-8"></head>
-      <body>
-        <h3>${escaparHTML(tituloResumenAsistencia())}</h3>
-        ${tabla.outerHTML}
-      </body>
-      </html>
-    `;
-    const blob = new Blob([html], { type:"application/vnd.ms-excel;charset=utf-8" });
-    const enlace = document.createElement("a");
-    enlace.href = URL.createObjectURL(blob);
-    enlace.download = `${nombreArchivoSeguro(tituloResumenAsistencia()) || "asistencia"}.xls`;
-    document.body.appendChild(enlace);
-    enlace.click();
-    URL.revokeObjectURL(enlace.href);
-    enlace.remove();
-  }
+  // Las funciones de impresion/exportacion viven en exportar.js.
 
   function activarSeleccionFilasAsistencia() {
     document.querySelectorAll(".attendance-table tbody tr").forEach(fila => {
@@ -1354,35 +1287,6 @@
     }
   });
 </script>
+<script src="exportar.js?v=v1.9"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

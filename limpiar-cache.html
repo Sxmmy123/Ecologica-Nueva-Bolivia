@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actualizar sistema</title>
+  <style>
+    body{align-items:center;background:#eef5ff;color:#12355b;display:flex;font-family:Arial,sans-serif;justify-content:center;margin:0;min-height:100vh;padding:18px;text-align:center;}
+    .box{background:#fff;border:1px solid #cfe2ff;border-radius:12px;box-shadow:0 18px 42px rgba(18,53,91,.16);max-width:420px;padding:26px;width:100%;}
+    h1{font-size:1.5rem;margin:0 0 10px;}p{color:#4d5f73;font-weight:700;line-height:1.45;}
+    button{background:#12355b;border:0;border-radius:8px;color:#fff;font-weight:900;margin-top:12px;padding:11px 16px;width:100%;}
+  </style>
+</head>
+<body>
+  <main class="box">
+    <h1>Actualizando sistema</h1>
+    <p id="estado">Limpiando cache anterior. Espere un momento...</p>
+    <button id="btn" type="button" hidden>Entrar al sistema</button>
+  </main>
+  <script>
+    async function limpiar(){
+      try{
+        if('serviceWorker' in navigator){
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(reg=>reg.unregister()));
+        }
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.filter(key=>key.startsWith('nueva-bolivia-pwa-')).map(key=>caches.delete(key)));
+        }
+        localStorage.removeItem('__pwaCacheCleanupVersion');
+        Object.keys(sessionStorage).forEach(key=>{ if(key.startsWith('__pwaCacheCleanupReloaded:')) sessionStorage.removeItem(key); });
+        document.getElementById('estado').textContent='Listo. Ahora entra nuevamente al sistema.';
+      }catch(error){
+        document.getElementById('estado').textContent='No se pudo limpiar automaticamente. Recargue la pagina.';
+      }
+      const btn=document.getElementById('btn');
+      btn.hidden=false;
+      btn.onclick=()=>window.location.replace('index.html?actualizado=v1.9');
+    }
+    limpiar();
+  </script>
+</body>
+</html>
