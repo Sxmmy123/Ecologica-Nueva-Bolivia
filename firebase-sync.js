@@ -1199,8 +1199,172 @@
     return Object.entries(data).map(([id, value]) => ({ id, data: value || {} }));
   }
 
-  async function pullSingles(next) {
+  function currentPageName() {
+    const file = String(location.pathname || "").split(/[\\/]/).pop() || "index.html";
+    return file.toLowerCase();
+  }
+
+  function sessionJSON(key, fallback) {
+    return parseJSON(sessionStorage.getItem(key), fallback);
+  }
+
+  function teacherAssignmentsFromSession() {
+    const usuario = sessionStorage.getItem("docenteUsuario") || "";
+    const fromSession = sessionJSON("docenteAsignaciones", []);
+    if (Array.isArray(fromSession) && fromSession.length) {
+      return fromSession.map(asig => ({
+        curso: normalizeCourseName(asig?.curso || ""),
+        materias: Array.isArray(asig?.materias) ? [...new Set(asig.materias.filter(Boolean))] : []
+      })).filter(asig => asig.curso && asig.materias.length);
+    }
+
+    const docentes = localJSON("docentes", []);
+    const docente = Array.isArray(docentes) ? docentes.find(item => item?.usuario === usuario) : null;
+    if (docente) return teacherAssignments(docente);
+
+    const curso = normalizeCourseName(sessionStorage.getItem("docenteCurso") || "");
+    const materias = sessionJSON("docenteMaterias", [sessionStorage.getItem("docenteMateria")].filter(Boolean));
+    return curso && Array.isArray(materias) && materias.length ? [{ curso, materias }] : [];
+  }
+
+  function uniqueCoursesFromAssignments(assignments) {
+    return [...new Set((assignments || []).map(asig => normalizeCourseName(asig.curso)).filter(Boolean))];
+  }
+
+  function pullScope() {
+    const role = currentRole();
+    const page = currentPageName();
+    const login = !role && isLoginPage();
+    const scope = {
+      role,
+      page,
+      login,
+      courses: null,
+      assignments: [],
+      studentName: "",
+      singleKeys: new Set(Object.keys(SINGLE_KEYS)),
+      courseObjectKeys: new Set(Object.keys(COURSE_OBJECT_KEYS)),
+      courseEntryKeys: new Set(Object.keys(COURSE_ENTRY_KEYS)),
+      includeNotes: true,
+      includeActivities: true,
+      includeStorage: true,
+      storageCollections: null
+    };
+
+    if (login) {
+      scope.singleKeys = new Set(["cursos", "director", "docentes", "cursoColores"]);
+      scope.courseObjectKeys = new Set(["alumnos"]);
+      scope.courseEntryKeys = new Set();
+      scope.includeNotes = false;
+      scope.includeActivities = false;
+      scope.includeStorage = false;
+      return scope;
+    }
+
+    if (role === "admin") {
+      scope.singleKeys = new Set(["cursos", "director", "docentes", "cursoColores", "horasPrimaria"]);
+      scope.courseObjectKeys = new Set(["alumnos"]);
+      scope.courseEntryKeys = new Set();
+      scope.includeNotes = ["notas.html", "alumno.html", "reportes.html"].includes(page);
+      scope.includeActivities = ["mes.html", "calificar.html", "alumno.html", "reportes.html"].includes(page);
+      scope.includeStorage = true;
+      scope.storageCollections = null;
+      if (["dia.html", "reportes.html", "notas.html", "alumno.html"].includes(page)) {
+        scope.courseEntryKeys = new Set(Object.keys(COURSE_ENTRY_KEYS));
+      }
+      if (scope.includeNotes || page === "notas.html") {
+        Object.keys(COURSE_OBJECT_KEYS).forEach(key => scope.courseObjectKeys.add(key));
+      }
+      return scope;
+    }
+
+    if (role === "docente") {
+      const assignments = teacherAssignmentsFromSession();
+      const courses = uniqueCoursesFromAssignments(assignments);
+      scope.assignments = assignments;
+      scope.courses = courses.length ? courses : [];
+      scope.singleKeys = new Set(["cursos", "docentes", "horasPrimaria"]);
+      scope.courseObjectKeys = new Set(["alumnos", "notas", "ser", "serCriterios", "autoevaluacion", "autoevaluacionConfig"]);
+      scope.courseEntryKeys = new Set(Object.keys(COURSE_ENTRY_KEYS));
+      scope.includeNotes = true;
+      scope.includeActivities = true;
+      scope.includeStorage = true;
+      scope.storageCollections = new Set(["horarios", "horarios_docente", "materias", "materias_personalizadas", "materia_colores", "materias_modo"]);
+      return scope;
+    }
+
+    if (role === "alumno") {
+      const curso = normalizeCourseName(sessionStorage.getItem("alumnoCurso") || "");
+      scope.courses = curso ? [curso] : [];
+      scope.studentName = sessionStorage.getItem("alumnoNombre") || "";
+      scope.singleKeys = new Set(["cursos", "cursoColores"]);
+      scope.courseObjectKeys = new Set(["alumnos", "notas", "ser", "serCriterios", "autoevaluacion", "autoevaluacionConfig"]);
+      scope.courseEntryKeys = new Set(Object.keys(COURSE_ENTRY_KEYS));
+      scope.includeNotes = true;
+      scope.includeActivities = true;
+      scope.includeStorage = true;
+      scope.storageCollections = new Set(["materias", "materia_colores"]);
+      return scope;
+    }
+
+    return scope;
+  }
+
+  function courseAllowed(scope, courseRaw) {
+    if (!scope?.courses) return true;
+    const course = normalizeCourseName(courseRaw);
+    return scope.courses.map(normalizeCourseName).includes(course);
+  }
+
+  function materiaAllowed(scope, courseRaw, materiaRaw) {
+    if (!courseAllowed(scope, courseRaw)) return false;
+    if (!scope?.assignments?.length) return true;
+    const course = normalizeCourseName(courseRaw);
+    const materia = String(materiaRaw || "");
+    return scope.assignments.some(asig => normalizeCourseName(asig.curso) === course && (!materia || asig.materias.includes(materia)));
+  }
+
+  async function readCollectionByCourse(collectionName, courses) {
+    if (!Array.isArray(courses) || !courses.length) return readCollection(collectionName);
+    const rows = [];
+    const seen = new Set();
+    for (const course of courses.map(normalizeCourseName)) {
+      const snapshot = await baseRef.child(rtdbKey(collectionName)).orderByChild("course").equalTo(course).once("value");
+      const data = snapshot.val() || {};
+      Object.entries(data).forEach(([id, value]) => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        rows.push({ id, data: value || {} });
+      });
+    }
+    return rows;
+  }
+
+  async function readCollectionByStudent(collectionName, studentName) {
+    const name = String(studentName || "");
+    if (!name) return readCollection(collectionName);
+    const snapshot = await baseRef.child(rtdbKey(collectionName)).orderByChild("alumno").equalTo(name).once("value");
+    const data = snapshot.val() || {};
+    return Object.entries(data).map(([id, value]) => ({ id, data: value || {} }));
+  }
+
+  async function readCourseDocuments(collectionName, courses) {
+    if (!Array.isArray(courses) || !courses.length) return readCollection(collectionName);
+    const rows = [];
+    const seen = new Set();
+    for (const course of courses.map(normalizeCourseName)) {
+      const id = slug(course);
+      const snapshot = await baseRef.child(rtdbKey(collectionName)).child(rtdbKey(id)).once("value");
+      if (!snapshot.exists() || seen.has(id)) continue;
+      seen.add(id);
+      rows.push({ id, data: snapshot.val() || {} });
+    }
+    return rows;
+  }
+
+  async function pullSingles(next, keys = null) {
     for (const [key, spec] of Object.entries(SINGLE_KEYS)) {
+      if (keys && !keys.has(key)) continue;
       const snapshot = await baseRef.child(rtdbKey(spec.collection)).child(rtdbKey(spec.doc)).once("value");
       if (snapshot.exists()) {
         const data = snapshot.val() || {};
@@ -1212,25 +1376,27 @@
     }
   }
 
-  async function pullCourseObject(next, key, collectionName) {
-    const docs = await readCollection(collectionName);
+  async function pullCourseObject(next, key, collectionName, scope = null) {
+    const docs = await readCourseDocuments(collectionName, scope?.courses || null);
     if (!docs.length) return;
     const obj = {};
     let updatedAt = 0;
     docs.forEach(({ data, id }) => {
-      const course = data.course || id;
+      const course = normalizeCourseName(data.course || id);
+      if (!courseAllowed(scope, course)) return;
       obj[course] = parseStoredValue(data.value, {});
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
-    next[key] = { value: stringify(obj), updatedAt };
+    if (Object.keys(obj).length) next[key] = { value: stringify(obj), updatedAt };
   }
 
-  async function pullDetailedNotes(next) {
-    const detailDocs = await readCollection("notas_detalle");
+  async function pullDetailedNotes(next, scope = null) {
+    const detailDocs = await readCollectionByCourse("notas_detalle", scope?.courses || null);
     if (!detailDocs.length) return false;
-    const indexDocs = await readCollection("notas_index");
+    const indexDocs = await readCollectionByCourse("notas_index", scope?.courses || null);
     const activeByScope = {};
     indexDocs.forEach(({ data }) => {
+      if (!materiaAllowed(scope, data.course, data.materia)) return;
       activeByScope[data.scopeId] = new Set(parseStoredValue(data.activeIds, []));
     });
 
@@ -1239,11 +1405,12 @@
     let updatedAt = Number(next.notas?.updatedAt || 0);
 
     detailDocs.forEach(({ id, data }) => {
-      const scopeId = data.scopeId || noteScopeId(data.course, data.trimestre, data.materia);
-      if (activeByScope[scopeId] && !activeByScope[scopeId].has(id)) return;
       const course = normalizeCourseName(data.course || "general");
-      const trimestre = data.trimestre || "1er Trimestre";
       const materia = data.materia || "Sin materia";
+      if (!materiaAllowed(scope, course, materia)) return;
+      const scopeId = data.scopeId || noteScopeId(course, data.trimestre, materia);
+      if (activeByScope[scopeId] && !activeByScope[scopeId].has(id)) return;
+      const trimestre = data.trimestre || "1er Trimestre";
       const titulo = data.titulo || "Sin titulo";
       if (!notes[course]) notes[course] = {};
       if (!notes[course][trimestre]) notes[course][trimestre] = {};
@@ -1256,6 +1423,7 @@
       const course = normalizeCourseName(data.course || "general");
       const trimestre = data.trimestre || "1er Trimestre";
       const materia = data.materia || "Sin materia";
+      if (!materiaAllowed(scope, course, materia)) return;
       const activeIds = activeByScope[data.scopeId] || new Set();
       if (!notes?.[course]?.[trimestre]?.[materia]) return;
       Object.keys(notes[course][trimestre][materia]).forEach(titulo => {
@@ -1271,18 +1439,23 @@
     return true;
   }
 
-  async function pullCourseEntries(next, key, collectionName) {
-    const docs = await readCollection(collectionName);
+  async function pullCourseEntries(next, key, collectionName, scope = null) {
+    const docs = await readCourseDocuments(collectionName, scope?.courses || null);
     const obj = {};
     let updatedAt = 0;
     docs.forEach(({ data }) => {
+      if (!courseAllowed(scope, data.course)) return;
       Object.assign(obj, parseStoredValue(data.value, {}));
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
 
     if (key === "asistencias") {
-      const detailDocs = await readCollection("asistencias_alumno");
+      const detailDocs = scope?.studentName
+        ? await readCollectionByStudent("asistencias_alumno", scope.studentName)
+        : await readCollectionByCourse("asistencias_alumno", scope?.courses || null);
       detailDocs.forEach(({ data }) => {
+        if (!courseAllowed(scope, data.course)) return;
+        if (scope?.studentName && data.alumno !== scope.studentName) return;
         const entryKey = data.entryKey || [data.fecha, data.course, data.alumno].join("|");
         obj[entryKey] = data.value || "blanco";
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
@@ -1290,8 +1463,9 @@
     }
 
     if (key === "asistenciaEdiciones") {
-      const detailDocs = await readCollection("asistencia_ediciones_detalle");
+      const detailDocs = await readCollectionByCourse("asistencia_ediciones_detalle", scope?.courses || null);
       detailDocs.forEach(({ data }) => {
+        if (!courseAllowed(scope, data.course)) return;
         const entryKey = data.entryKey || [data.fecha, data.course].join("|");
         obj[entryKey] = parseStoredValue(data.value, []);
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
@@ -1302,58 +1476,108 @@
     next[key] = { value: stringify(obj), updatedAt };
   }
 
-  async function pullActivities(next) {
-    const detailDocs = await readCollection("actividades_detalle");
+  async function pullActivities(next, scope = null) {
+    const detailDocs = await readCollectionByCourse("actividades_detalle", scope?.courses || null);
     if (detailDocs.length) {
-      const indexDocs = await readCollection("actividades_index");
+      const indexDocs = await readCollectionByCourse("actividades_index", scope?.courses || null);
       const activeByScope = {};
       indexDocs.forEach(({ data }) => {
+        if (!materiaAllowed(scope, data.course, data.materia)) return;
         activeByScope[data.scopeId] = new Set(parseStoredValue(data.activeIds, []));
       });
       const activities = [];
       let updatedAt = 0;
       detailDocs.forEach(({ id, data }) => {
         const activity = parseStoredValue(data.value, null);
+        const course = normalizeCourseName(data.course || activity?.curso || "general");
+        const materia = data.materia || activity?.materia || "";
+        if (!materiaAllowed(scope, course, materia)) return;
         const scopeId = data.scopeId || activityScopeId(activity || {});
         if (activeByScope[scopeId] && !activeByScope[scopeId].has(id)) return;
-        if (activity) activities.push(activity);
+        if (activity) activities.push({ ...activity, curso: course });
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
       });
       next.actividades = { value: stringify(activities), updatedAt };
       return;
     }
 
-    const full = await baseRef.child("actividades").child("todos").once("value");
-    if (full.exists()) {
-      const data = full.val() || {};
-      next.actividades = {
-        value: valueForLocalStorage(data.value, []),
-        updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
-      };
-      return;
+    if (!scope?.courses) {
+      const full = await baseRef.child("actividades").child("todos").once("value");
+      if (full.exists()) {
+        const data = full.val() || {};
+        next.actividades = {
+          value: valueForLocalStorage(data.value, []),
+          updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
+        };
+        return;
+      }
     }
 
-    const hacer = await readCollection("hacer");
-    const saber = await readCollection("saber");
+    const hacer = await readCollectionByCourse("hacer", scope?.courses || null);
+    const saber = await readCollectionByCourse("saber", scope?.courses || null);
     const activities = [];
     let updatedAt = 0;
     [...hacer, ...saber].forEach(({ data }) => {
+      if (!materiaAllowed(scope, data.course, data.materia)) return;
       const list = parseStoredValue(data.value, []);
-      if (Array.isArray(list)) activities.push(...list);
+      if (Array.isArray(list)) activities.push(...list.filter(item => materiaAllowed(scope, item?.curso, item?.materia)));
       updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
     });
     if (hacer.length || saber.length) next.actividades = { value: stringify(activities), updatedAt };
   }
 
-  async function pullStorageCourse(next, prefix, collectionName) {
-    const docs = await readCollection(collectionName);
+  async function pullStorageCourse(next, prefix, collectionName, scope = null) {
+    if (scope?.storageCollections && !scope.storageCollections.has(collectionName)) return;
+    if (collectionName === "horarios_docente" && isTeacherRole()) {
+      const usuario = sessionStorage.getItem("docenteUsuario") || "";
+      if (!usuario) return;
+      const snapshot = await baseRef.child(rtdbKey(collectionName)).child(rtdbKey(slug(usuario))).once("value");
+      if (!snapshot.exists()) return;
+      const data = snapshot.val() || {};
+      next[prefix + usuario] = {
+        value: valueForLocalStorage(data.value, ""),
+        updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
+      };
+      return;
+    }
+
+    const courseLimited = collectionName !== "horarios_docente" ? scope?.courses : null;
+    const docs = await readCourseDocuments(collectionName, courseLimited || null);
     docs.forEach(({ data, id }) => {
       const course = data.course || id;
-      next[`${prefix}${course}`] = {
+      if (courseLimited && !courseAllowed(scope, course)) return;
+      next[prefix + course] = {
         value: valueForLocalStorage(data.value, ""),
         updatedAt: Math.max(timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt))
       };
     });
+  }
+
+  async function pullStructured(force) {
+    const scope = pullScope();
+    const next = {};
+    await pullSingles(next, scope.singleKeys);
+    for (const [key, collection] of Object.entries(COURSE_OBJECT_KEYS)) {
+      if (!scope.courseObjectKeys.has(key)) continue;
+      await pullCourseObject(next, key, collection, scope);
+    }
+    if (scope.includeNotes) await pullDetailedNotes(next, scope);
+    for (const [key, collection] of Object.entries(COURSE_ENTRY_KEYS)) {
+      if (!scope.courseEntryKeys.has(key)) continue;
+      await pullCourseEntries(next, key, collection, scope);
+    }
+    if (scope.includeActivities) await pullActivities(next, scope);
+    if (scope.includeStorage) {
+      for (const spec of COURSE_STORAGE_PREFIXES) await pullStorageCourse(next, spec.prefix, spec.collection, scope);
+    }
+
+    let changed = false;
+    Object.entries(next).forEach(([key, record]) => {
+      const value = record && typeof record === "object" && Object.prototype.hasOwnProperty.call(record, "value") ? record.value : record;
+      const updatedAt = record && typeof record === "object" ? Number(record.updatedAt || 0) : 0;
+      if (applyLocalValue(key, value, force, updatedAt)) changed = true;
+    });
+    return changed;
   }
 
   function applyLegacyRecord(data, force) {
@@ -1376,24 +1600,6 @@
       if (!data.key && !Object.prototype.hasOwnProperty.call(data, "value")) return;
       if (!data.key) data.key = canonicalKey(decodeURIComponent(id));
       if (applyLegacyRecord(data, force)) changed = true;
-    });
-    return changed;
-  }
-
-  async function pullStructured(force) {
-    const next = {};
-    await pullSingles(next);
-    for (const [key, collection] of Object.entries(COURSE_OBJECT_KEYS)) await pullCourseObject(next, key, collection);
-    await pullDetailedNotes(next);
-    for (const [key, collection] of Object.entries(COURSE_ENTRY_KEYS)) await pullCourseEntries(next, key, collection);
-    await pullActivities(next);
-    for (const spec of COURSE_STORAGE_PREFIXES) await pullStorageCourse(next, spec.prefix, spec.collection);
-
-    let changed = false;
-    Object.entries(next).forEach(([key, record]) => {
-      const value = record && typeof record === "object" && Object.prototype.hasOwnProperty.call(record, "value") ? record.value : record;
-      const updatedAt = record && typeof record === "object" ? Number(record.updatedAt || 0) : 0;
-      if (applyLocalValue(key, value, force, updatedAt)) changed = true;
     });
     return changed;
   }
@@ -1708,7 +1914,10 @@
       if (!baseRef && !(await initFirebase())) return;
       const role = currentRole();
 
-      if (!role) return;
+      if (!role) {
+        if (isLoginPage()) await pullRemoteOnStart();
+        return;
+      }
 
       if (isViewerRole()) {
         await pullRemoteOnStart();
@@ -1728,7 +1937,10 @@
       if (!(await initFirebase())) return;
       booting = false;
       const role = currentRole();
-      if (!role) return;
+      if (!role) {
+        if (isLoginPage()) await pullRemoteOnStart();
+        return;
+      }
       normalizeCourseStorage(Boolean(role) && !isViewerRole());
 
       if (role && !isViewerRole()) {
