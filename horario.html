@@ -77,12 +77,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v2.3"></script>
+  <script src="firebase-sync.js?v=v2.5"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.3"></script>
+  <script defer src="pwa.js?v=v2.5"></script>
 </head>
 <body>
 <script>
@@ -690,6 +690,95 @@
     localStorage.setItem(`materiasModo_${curso}`, modoMaterias);
   }
 
+  function clavesHorarioParaFirebase() {
+    const claves = new Set([
+      `horario_${curso}`,
+      `materias_${curso}`,
+      `materiasPersonalizadas_${curso}`,
+      `materiaColores_${curso}`,
+      `materiasModo_${curso}`
+    ]);
+    if (esPrimaria()) {
+      claves.add("horasPrimaria");
+      CURSOS_PRIMARIA.forEach(nombreCurso => claves.add(`horario_${nombreCurso}`));
+    }
+    for (let i = 0; i < localStorage.length; i++) {
+      const clave = localStorage.key(i);
+      if (clave && clave.startsWith("horarioDocente_")) claves.add(clave);
+    }
+    return [...claves];
+  }
+
+  function claveFirebase(valor) {
+    return String(valor || "sin_id")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[.#$/[\]]/g, "_")
+      .replace(/[^a-zA-Z0-9_-]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "") || "sin_id";
+  }
+
+  function coleccionPorClaveHorario(clave) {
+    if (clave.startsWith("horarioDocente_")) return { coleccion: "horarios_docente", curso: clave.replace("horarioDocente_", "") };
+    if (clave.startsWith("horario_")) return { coleccion: "horarios", curso: clave.replace("horario_", "") };
+    if (clave.startsWith("materiasPersonalizadas_")) return { coleccion: "materias_personalizadas", curso: clave.replace("materiasPersonalizadas_", "") };
+    if (clave.startsWith("materiaColores_")) return { coleccion: "materia_colores", curso: clave.replace("materiaColores_", "") };
+    if (clave.startsWith("materiasModo_")) return { coleccion: "materias_modo", curso: clave.replace("materiasModo_", "") };
+    if (clave.startsWith("materias_")) return { coleccion: "materias", curso: clave.replace("materias_", "") };
+    if (clave === "horasPrimaria") return { coleccion: "sistema", curso: "horasPrimaria", id: "horasPrimaria" };
+    return null;
+  }
+
+  async function guardarHorarioDirectoRealtime(claves) {
+    if (sessionStorage.getItem("sesionRol") !== "admin") return false;
+    if (!window.firebase?.database || !window.firebaseConfig?.apiKey) return false;
+    if (!firebase.apps.length) firebase.initializeApp(window.firebaseConfig);
+    const appId = window.APP_SYNC_ID || "proyecto1";
+    const base = firebase.database().ref("sistemaEscolar").child(claveFirebase(appId)).child("registros");
+    const updatedAt = firebase.database.ServerValue.TIMESTAMP;
+    const escrituras = [];
+    claves.forEach(clave => {
+      const info = coleccionPorClaveHorario(clave);
+      if (!info) return;
+      const valorRaw = localStorage.getItem(clave);
+      if (valorRaw === null) return;
+      let valor = valorRaw;
+      try { valor = JSON.parse(valorRaw); } catch (error) {}
+      const id = info.id || claveFirebase(info.curso);
+      escrituras.push(base.child(claveFirebase(info.coleccion)).child(id).set({
+        key: clave,
+        course: info.curso,
+        value: valor,
+        operation: "set",
+        updatedAt
+      }));
+    });
+    if (!escrituras.length) return false;
+    await Promise.all(escrituras);
+    return true;
+  }
+
+  async function confirmarGuardadoHorarioFirebase() {
+    if (!navigator.onLine) {
+      if (typeof window.showInternetRequired === "function") {
+        window.showInternetRequired("Conecte a internet para guardar el horario.");
+      }
+      return false;
+    }
+    const claves = clavesHorarioParaFirebase();
+    const directo = await guardarHorarioDirectoRealtime(claves).catch(error => {
+      console.error("No se pudo guardar horario directo en Firebase", error);
+      return false;
+    });
+    if (typeof window.firebaseMarkPackage === "function") {
+      const resultados = await Promise.allSettled(claves.map(clave => window.firebaseMarkPackage(clave)));
+      if (typeof window.firebaseSyncNow === "function") await window.firebaseSyncNow();
+      return directo || resultados.some(resultado => resultado.status === "fulfilled" && resultado.value !== false);
+    }
+    return directo;
+  }
+
   function materiasDisponiblesActuales() {
     if (modoMaterias === "propio") return [...new Set(materiasPersonalizadas)];
     return [...new Set([...materiasDisponibles, ...materiasPersonalizadas])];
@@ -942,16 +1031,29 @@
     generarTabla();
   });
 
-  btnGuardar.addEventListener("click", () => {
-    guardarValoresTabla();
-    guardarHorasPrimariaDesdeHorario();
-    aplicarHorasPrimariaATodos();
-    guardarJSON(`horario_${curso}`, horario);
-    guardarMaterias();
-    recalcularHorariosDocentes();
-    respaldoEdicion = null;
-    cerrarEdicion();
-    alert("Horario guardado!");
+  btnGuardar.addEventListener("click", async () => {
+    btnGuardar.disabled = true;
+    const textoOriginal = btnGuardar.innerHTML;
+    btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+    try {
+      guardarValoresTabla();
+      guardarHorasPrimariaDesdeHorario();
+      aplicarHorasPrimariaATodos();
+      guardarJSON(`horario_${curso}`, horario);
+      guardarMaterias();
+      recalcularHorariosDocentes();
+      const guardadoFirebase = await confirmarGuardadoHorarioFirebase();
+      if (!guardadoFirebase) {
+        alert("No se pudo confirmar el guardado en internet. Revise la conexion e intente nuevamente.");
+        return;
+      }
+      respaldoEdicion = null;
+      cerrarEdicion();
+      alert("Horario guardado en Firebase!");
+    } finally {
+      btnGuardar.disabled = false;
+      btnGuardar.innerHTML = textoOriginal;
+    }
   });
 
   btnNoGuardar.addEventListener("click", () => {
