@@ -309,12 +309,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v1.0"></script>
+  <script src="firebase-sync.js?v=v1.1"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v1.0"></script>
+  <script defer src="pwa.js?v=v1.1"></script>
 </head>
 <body>
 <script>
@@ -476,6 +476,23 @@
     } catch (error) {
       return inicial;
     }
+  }
+
+
+  function nombreAlumno(item) {
+    return typeof item === "string" ? item : String(item?.nombre || "").trim();
+  }
+
+  function alumnoActivo(item) {
+    return typeof item === "string" ? true : item?.activo !== false;
+  }
+
+  function nombresAlumnosCurso(curso, soloActivos = true) {
+    const lista = leerJSON("alumnos", {})[curso] || [];
+    return lista
+      .filter(item => !soloActivos || alumnoActivo(item))
+      .map(nombreAlumno)
+      .filter(Boolean);
   }
 
   function docenteActualNombre() {
@@ -980,7 +997,7 @@
       return;
     }
 
-    const alumnos = alumnosPorCurso[cursoVistaActual] || [];
+    const alumnos = nombresAlumnosCurso(cursoVistaActual);
     const fechasRegistradas = [...new Set(Object.keys(asistencias)
       .map(clave => clave.split("|"))
       .filter(partes => partes.length >= 3 && partes[1] === cursoVistaActual)
@@ -1225,7 +1242,7 @@
       div.className = "curso-card";
       div.style.borderTopColor = colorCurso(curso);
 
-      const listaAlumnos = alumnosPorCurso[curso] || [];
+      const listaAlumnos = nombresAlumnosCurso(curso);
       const bloqueada = asistenciaBloqueadaPorHorario(curso);
       const editable = puedeEditarAsistencia(curso, modoEdicion);
       const totales = listaAlumnos.reduce((acc, nombre) => {

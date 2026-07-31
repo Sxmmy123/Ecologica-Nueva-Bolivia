@@ -195,12 +195,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v1.0"></script>
+  <script src="firebase-sync.js?v=v1.1"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v1.0"></script>
+  <script defer src="pwa.js?v=v1.1"></script>
 </head>
 <body>
   <script>
@@ -296,6 +296,23 @@
     function leerJSON(clave, inicial = {}) {
       try { return JSON.parse(localStorage.getItem(clave) || JSON.stringify(inicial)); }
       catch (error) { return inicial; }
+    }
+
+
+    function nombreAlumno(item) {
+      return typeof item === "string" ? item : String(item?.nombre || "").trim();
+    }
+
+    function alumnoActivo(item) {
+      return typeof item === "string" ? true : item?.activo !== false;
+    }
+
+    function nombresAlumnosCurso(curso, soloActivos = true) {
+      const lista = leerJSON("alumnos", {})[curso] || [];
+      return lista
+        .filter(item => !soloActivos || alumnoActivo(item))
+        .map(nombreAlumno)
+        .filter(Boolean);
     }
 
     function guardarJSON(clave, valor) {
@@ -950,7 +967,7 @@
 
     function renderNotas() {
       if (!cursoActual) return;
-      const alumnos = leerJSON("alumnos")[cursoActual] || [];
+      const alumnos = nombresAlumnosCurso(cursoActual);
 
       if (!materiaActual) {
         contenido.innerHTML = '<div class="alert alert-warning text-center">No existen notas registradas para esta vista.</div>';
@@ -1187,7 +1204,7 @@
         return;
       }
 
-      const alumnos = leerJSON("alumnos")[cursoActual] || [];
+      const alumnos = nombresAlumnosCurso(cursoActual);
       if (!alumnos.length) {
         alert("No hay alumnos para imprimir.");
         return;

@@ -60,12 +60,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v1.0"></script>
+  <script src="firebase-sync.js?v=v1.1"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v1.0"></script>
+  <script defer src="pwa.js?v=v1.1"></script>
 </head>
 <body>
   <script>
@@ -395,6 +395,75 @@
       return [...new Set(cursos)];
     }
 
+
+
+    function registroAlumno(item, curso = cursoActual) {
+      const alumnosCI = leerJSON("alumnosCI", {});
+      const estados = leerJSON("alumnosEstado", {});
+      const nombre = typeof item === "string" ? item : String(item?.nombre || "").trim();
+      if (!nombre) return null;
+      const ci = String((item && typeof item === "object" ? item.ci : "") || alumnosCI?.[curso]?.[nombre] || "").trim();
+      const activo = item && typeof item === "object" && Object.prototype.hasOwnProperty.call(item, "activo")
+        ? item.activo !== false
+        : estados?.[curso]?.[nombre] !== false;
+      return { nombre, ci, activo };
+    }
+
+    function alumnosCurso(curso = cursoActual, soloActivos = false) {
+      const lista = leerJSON("alumnos", {})[curso] || [];
+      return lista.map(item => registroAlumno(item, curso)).filter(item => item && (!soloActivos || item.activo));
+    }
+
+
+    function guardarAlumnosCurso(curso, lista) {
+      const alumnos = leerJSON("alumnos", {});
+      const vistos = new Set();
+      alumnos[curso] = lista.filter(item => item?.nombre).filter(item => {
+        const key = (item.ci || item.nombre).toLowerCase();
+        if (vistos.has(key)) return false;
+        vistos.add(key);
+        return true;
+      });
+      guardarJSON("alumnos", alumnos);
+      localStorage.removeItem("alumnosCI");
+      localStorage.removeItem("alumnosEstado");
+    }
+
+    function guardarAlumno(nombre, ci) {
+      const limpioNombre = nombre.trim();
+      const limpioCI = String(ci || "").trim();
+      if (!limpioNombre || !limpioCI) return false;
+
+      const lista = alumnosCurso(cursoActual);
+      const existente = lista.find(item => item.nombre === limpioNombre || (limpioCI && item.ci === limpioCI));
+      if (existente) {
+        existente.nombre = limpioNombre;
+        existente.ci = limpioCI;
+        existente.activo = true;
+      } else {
+        lista.push({ nombre: limpioNombre, ci: limpioCI, activo: true });
+      }
+      guardarAlumnosCurso(cursoActual, lista);
+      return true;
+    }
+
+    function unificarAlumnosGuardados() {
+      const alumnos = leerJSON("alumnos", {});
+      Object.keys(alumnos).forEach(curso => {
+        const normal = normalizarCurso(curso);
+        if (normal && normal !== curso) {
+          alumnos[normal] = [...(alumnos[normal] || []), ...(alumnos[curso] || [])];
+          delete alumnos[curso];
+        }
+      });
+      Object.keys(alumnos).forEach(curso => {
+        alumnos[curso] = (alumnos[curso] || []).map(item => registroAlumno(item, curso)).filter(Boolean);
+      });
+      guardarJSON("alumnos", alumnos);
+      localStorage.removeItem("alumnosCI");
+      localStorage.removeItem("alumnosEstado");
+    }
+
     function materiasCurso(curso) {
       const guardadas = leerJSON(`materias_${curso}`, []);
       return guardadas.length ? guardadas : MATERIAS_DEFAULT;
@@ -409,12 +478,17 @@
       Object.keys(alumnos).forEach(curso => {
         const normal = normalizarCurso(curso);
         if (normal && normal !== curso) {
-          alumnos[normal] = [...new Set([...(alumnos[normal] || []), ...(alumnos[curso] || [])])];
+          alumnos[normal] = [...(alumnos[normal] || []), ...(alumnos[curso] || [])];
           delete alumnos[curso];
         }
       });
       unidos.forEach(curso => { if (!alumnos[curso]) alumnos[curso] = []; });
+      Object.keys(alumnos).forEach(curso => {
+        alumnos[curso] = (alumnos[curso] || []).map(item => registroAlumno(item, curso)).filter(Boolean);
+      });
       guardarJSON("alumnos", alumnos);
+      localStorage.removeItem("alumnosCI");
+      localStorage.removeItem("alumnosEstado");
       cursoActual = normalizarCurso(cursoActual);
       if (!unidos.includes(cursoActual)) cursoActual = unidos[0];
       localStorage.setItem("cursoSeleccionado", cursoActual);
@@ -452,37 +526,17 @@
     }
 
     function estadoAlumno(nombre) {
-      const estados = leerJSON("alumnosEstado", {});
-      return estados?.[cursoActual]?.[nombre] !== false;
+      const alumno = alumnosCurso(cursoActual).find(item => item.nombre === nombre);
+      return alumno ? alumno.activo !== false : true;
     }
 
     function setEstadoAlumno(nombre, activo) {
-      const estados = leerJSON("alumnosEstado", {});
-      if (!estados[cursoActual]) estados[cursoActual] = {};
-      estados[cursoActual][nombre] = Boolean(activo);
-      guardarJSON("alumnosEstado", estados);
+      const lista = alumnosCurso(cursoActual);
+      const alumno = lista.find(item => item.nombre === nombre);
+      if (alumno) alumno.activo = Boolean(activo);
+      guardarAlumnosCurso(cursoActual, lista);
       renderAlumnos();
       renderAlumnosModal();
-    }
-
-    function guardarAlumno(nombre, ci) {
-      const limpioNombre = nombre.trim();
-      const limpioCI = String(ci || "").trim();
-      if (!limpioNombre || !limpioCI) return false;
-
-      const alumnos = leerJSON("alumnos", {});
-      const alumnosCI = leerJSON("alumnosCI", {});
-      const estados = leerJSON("alumnosEstado", {});
-      if (!alumnos[cursoActual]) alumnos[cursoActual] = [];
-      if (!alumnosCI[cursoActual]) alumnosCI[cursoActual] = {};
-      if (!estados[cursoActual]) estados[cursoActual] = {};
-      if (!alumnos[cursoActual].includes(limpioNombre)) alumnos[cursoActual].push(limpioNombre);
-      alumnosCI[cursoActual][limpioNombre] = limpioCI;
-      if (estados[cursoActual][limpioNombre] === undefined) estados[cursoActual][limpioNombre] = true;
-      guardarJSON("alumnos", alumnos);
-      guardarJSON("alumnosCI", alumnosCI);
-      guardarJSON("alumnosEstado", estados);
-      return true;
     }
 
     function agregarAlumnoIndividual() {
@@ -511,8 +565,8 @@
     }
 
     function renderAlumnos() {
-      const alumnos = leerJSON("alumnos", {})[cursoActual] || [];
-      const activos = alumnos.filter(nombre => estadoAlumno(nombre)).length;
+      const alumnos = alumnosCurso(cursoActual);
+      const activos = alumnos.filter(alumno => alumno.activo).length;
       const inactivos = alumnos.length - activos;
       document.getElementById("listaAlumnos").innerHTML = `
         <div class="selected-box student-summary-card" onclick="abrirModalAlumnos()" role="button" tabindex="0" title="Ver alumnos registrados">
@@ -542,8 +596,7 @@
     }
 
     function renderAlumnosModal() {
-      const alumnos = leerJSON("alumnos", {})[cursoActual] || [];
-      const alumnosCI = leerJSON("alumnosCI", {})[cursoActual] || {};
+      const alumnos = alumnosCurso(cursoActual);
       document.getElementById("tituloModalAlumnos").textContent = `Alumnos de ${cursoActual}`;
       const cont = document.getElementById("alumnosModalLista");
       if (!alumnos.length) {
@@ -552,13 +605,14 @@
       }
       cont.innerHTML = `
         <div class="list-group">
-          ${alumnos.map(nombre => {
-            const activo = estadoAlumno(nombre);
+          ${alumnos.map(alumno => {
+            const nombre = alumno.nombre;
+            const activo = alumno.activo;
             return `
               <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                   <div class="fw-bold">${escapar(nombre)}</div>
-                  <span class="ci-pill">CI: ${escapar(alumnosCI[nombre] || "Sin CI")}</span>
+                  <span class="ci-pill">CI: ${escapar(alumno.ci || "Sin CI")}</span>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                   <span class="status-pill ${activo ? "status-on" : "status-off"}">${activo ? "Habilitado" : "Deshabilitado"}</span>
@@ -984,6 +1038,7 @@
       renderDirector();
     }
 
+    unificarAlumnosGuardados();
     asegurarCursos();
     modalAsignaciones = new bootstrap.Modal(document.getElementById("modalAsignaciones"));
     modalAlumnos = new bootstrap.Modal(document.getElementById("modalAlumnos"));

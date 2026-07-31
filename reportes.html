@@ -85,12 +85,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v1.0"></script>
+  <script src="firebase-sync.js?v=v1.1"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v1.0"></script>
+  <script defer src="pwa.js?v=v1.1"></script>
 </head>
 <body>
 <script>
@@ -163,6 +163,23 @@
     } catch (error) {
       return inicial;
     }
+  }
+
+
+  function nombreAlumno(item) {
+    return typeof item === "string" ? item : String(item?.nombre || "").trim();
+  }
+
+  function alumnoActivo(item) {
+    return typeof item === "string" ? true : item?.activo !== false;
+  }
+
+  function nombresAlumnosCurso(curso, soloActivos = true) {
+    const lista = leerJSON("alumnos", {})[curso] || [];
+    return lista
+      .filter(item => !soloActivos || alumnoActivo(item))
+      .map(nombreAlumno)
+      .filter(Boolean);
   }
 
   function escapar(texto) {
@@ -274,7 +291,7 @@
     const resumen = {};
     cursosVisibles().forEach(curso => {
       const actividades = actividadesCurso(curso, periodoReporteActual);
-      resumen[curso] = (alumnosPorCurso[curso] || []).map(alumno => {
+      resumen[curso] = nombresAlumnosCurso(curso).map(alumno => {
         const presentadas = [];
         const faltantes = [];
         actividades.forEach(actividad => {
@@ -513,7 +530,7 @@
 
     Object.keys(registrosPorDia).forEach(id => {
       const [curso, fecha] = id.split("|");
-      const alumnos = alumnosPorCurso[curso] || [];
+      const alumnos = nombresAlumnosCurso(curso);
       alumnos.forEach(alumno => {
         const estado = asistencias[`${fecha}|${curso}|${alumno}`] || "blanco";
         const clave = estadoClave(estado);

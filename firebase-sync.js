@@ -30,8 +30,6 @@
 
   const COURSE_OBJECT_KEYS = {
     alumnos: "alumnos",
-    alumnosCI: "alumnos_ci",
-    alumnosEstado: "alumnos_estado",
     notas: "notas",
     ser: "ser",
     serCriterios: "ser_criterios",
@@ -307,6 +305,49 @@
     }
   }
 
+
+
+  function normalizeStudentRecord(item, course, alumnosCI, estados) {
+    const nombre = typeof item === "string" ? item : String(item?.nombre || item?.name || "").trim();
+    if (!nombre) return null;
+    const ci = String((item && typeof item === "object" ? item.ci : "") || alumnosCI?.[course]?.[nombre] || "").trim();
+    const activo = item && typeof item === "object" && Object.prototype.hasOwnProperty.call(item, "activo")
+      ? item.activo !== false
+      : estados?.[course]?.[nombre] !== false;
+    return { nombre, ci, activo };
+  }
+
+  function normalizeStudents(dirtyKeys) {
+    const alumnos = parseJSON(rawGetItem("alumnos"), {});
+    if (!alumnos || typeof alumnos !== "object" || Array.isArray(alumnos)) return;
+    const alumnosCI = parseJSON(rawGetItem("alumnosCI"), {});
+    const estados = parseJSON(rawGetItem("alumnosEstado"), {});
+    let changed = rawGetItem("alumnosCI") !== null || rawGetItem("alumnosEstado") !== null;
+    const next = {};
+
+    Object.entries(alumnos).forEach(([courseRaw, list]) => {
+      const course = normalizeCourseName(courseRaw);
+      const seen = new Set();
+      const source = Array.isArray(list) ? list : [];
+      next[course] = source.map(item => normalizeStudentRecord(item, courseRaw, alumnosCI, estados))
+        .filter(Boolean)
+        .filter(item => {
+          const key = (item.ci || item.nombre).toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      if (course !== courseRaw || stringify(source) !== stringify(next[course])) changed = true;
+    });
+
+    if (changed) {
+      rawSetItem("alumnos", stringify(next));
+      rawRemoveItem("alumnosCI");
+      rawRemoveItem("alumnosEstado");
+      dirtyKeys.add("alumnos");
+    }
+  }
+
   function normalizeTeachers(dirtyKeys) {
     const docentes = parseJSON(rawGetItem("docentes"), null);
     if (!Array.isArray(docentes)) return;
@@ -377,6 +418,7 @@
     ["cursoColores", ...Object.keys(COURSE_OBJECT_KEYS)].forEach(key => normalizeCourseObjectKey(key, dirtyKeys));
     Object.keys(COURSE_ENTRY_KEYS).forEach(key => normalizeCourseEntryKey(key, dirtyKeys));
     normalizeActivities(dirtyKeys);
+    normalizeStudents(dirtyKeys);
     normalizeTeachers(dirtyKeys);
     normalizePrefixedCourseKeys(dirtyKeys);
 
@@ -474,7 +516,7 @@
   function adminOwnsKey(key) {
     const normalized = canonicalKey(key);
     return Boolean(
-      ["cursos", "alumnos", "alumnosCI", "alumnosEstado", "cursoColores", "director", "docentes", "horasPrimaria"].includes(normalized) ||
+      ["cursos", "alumnos", "cursoColores", "director", "docentes", "horasPrimaria"].includes(normalized) ||
       storageCourseKey(normalized)
     );
   }
