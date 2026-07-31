@@ -548,21 +548,83 @@
       renderAlumnos();
     }
 
-    function agregarAlumnosMasivo() {
-      const texto = document.getElementById("alumnosMasivo").value;
-      let agregados = 0;
-      texto.split(/\r?\n/).forEach(linea => {
-        const limpia = linea.trim();
-        if (!limpia) return;
-        const partes = limpia.split(/\s+/);
-        const ci = partes.pop();
-        const nombre = partes.join(" ");
-        if (guardarAlumno(nombre, ci)) agregados++;
-      });
-      document.getElementById("alumnosMasivo").value = "";
-      renderAlumnos();
-      alert(`Se agregaron ${agregados} alumno(s).`);
+function agregarAlumnosMasivo() {
+  const textarea = document.getElementById("alumnosMasivo");
+  const texto = textarea.value.trim();
+
+  if (!texto) {
+    alert("Pegue al menos un alumno.");
+    return;
+  }
+
+  // Obtener una sola vez los alumnos actuales del curso
+  const lista = alumnosCurso(cursoActual);
+  const lineas = texto.split(/\r?\n/);
+
+  let agregados = 0;
+  let actualizados = 0;
+  let errores = 0;
+
+  lineas.forEach(linea => {
+    const limpia = linea.trim();
+
+    if (!limpia) return;
+
+    const partes = limpia.split(/\s+/);
+
+    // Debe existir al menos un nombre y un CI
+    if (partes.length < 2) {
+      errores++;
+      return;
     }
+
+    const ci = String(partes.pop()).trim();
+    const nombre = partes.join(" ").trim();
+
+    if (!nombre || !ci) {
+      errores++;
+      return;
+    }
+
+    // Buscar por CI o por nombre
+    const existente = lista.find(alumno =>
+      String(alumno.ci || "").trim() === ci ||
+      String(alumno.nombre || "").trim().toLowerCase() === nombre.toLowerCase()
+    );
+
+    if (existente) {
+      existente.nombre = nombre;
+      existente.ci = ci;
+      existente.activo = true;
+      actualizados++;
+    } else {
+      lista.push({
+        nombre: nombre,
+        ci: ci,
+        activo: true
+      });
+
+      agregados++;
+    }
+  });
+
+  // Guardar una sola vez todos los alumnos
+  guardarAlumnosCurso(cursoActual, lista);
+
+  textarea.value = "";
+  renderAlumnos();
+
+  if (modalAlumnos) {
+    renderAlumnosModal();
+  }
+
+  alert(
+    `Proceso terminado:\n` +
+    `• ${agregados} alumno(s) agregados\n` +
+    `• ${actualizados} alumno(s) actualizados\n` +
+    `• ${errores} línea(s) incorrectas`
+  );
+}
 
     function renderAlumnos() {
       const alumnos = alumnosCurso(cursoActual);
