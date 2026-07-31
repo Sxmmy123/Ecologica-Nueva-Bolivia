@@ -69,19 +69,17 @@
       position: fixed;
       right: 16px;
       top: 16px;
+      width: 44px;
+      height: 44px;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      min-height: 40px;
-      padding: 8px 12px;
-      border-radius: 999px;
+      justify-content: center;
+      border-radius: 50%;
       background: rgba(255,255,255,.96);
       color: #12355b;
       border: 2px solid rgba(18, 53, 91, .35);
       box-shadow: 0 12px 28px rgba(0,0,0,.24);
-      text-decoration: none;
-      font-size: .86rem;
-      font-weight: 900;
+      font-size: 1.15rem;
       z-index: 9999;
       transition: transform .18s ease, background .18s ease, border-color .18s ease;
     }
@@ -92,33 +90,112 @@
       border-color: #fff;
       transform: translateY(-2px);
     }
-    .cache-maintenance i { font-size: 1.05rem; line-height: 1; }
+    .cache-maintenance i { line-height: 1; }
+    .cleanup-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 21, 37, .58);
+      padding: 18px;
+      z-index: 10000;
+    }
+    .cleanup-modal.show { display: flex; }
+    .cleanup-box {
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid rgba(18, 53, 91, .16);
+      box-shadow: 0 24px 70px rgba(0,0,0,.32);
+      padding: 22px;
+      color: #12355b;
+    }
+    .cleanup-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #e8f2ff;
+      color: #0d6efd;
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+    }
+    .cleanup-box h2 {
+      font-size: 1.25rem;
+      font-weight: 900;
+      margin: 0 0 8px;
+    }
+    .cleanup-box p {
+      color: #5d6b7e;
+      font-weight: 700;
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
+    .cleanup-progress {
+      height: 10px;
+      background: #e8edf5;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0 8px;
+    }
+    .cleanup-progress span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0d6efd, #16a34a);
+      transition: width .25s ease;
+    }
+    .cleanup-status {
+      min-height: 20px;
+      color: #5d6b7e;
+      font-size: .86rem;
+      font-weight: 800;
+    }
+    .cleanup-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    .cleanup-actions button {
+      border: 0;
+      border-radius: 8px;
+      font-weight: 900;
+      padding: 9px 13px;
+    }
+    .cleanup-cancel { background: #eef2f7; color: #12355b; }
+    .cleanup-confirm { background: #dc3545; color: #fff; }
     @media (max-width: 520px) {
       .cache-maintenance {
         right: 10px;
         top: 10px;
-        padding: 7px 10px;
-        font-size: .78rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.05rem;
       }
+      .cleanup-actions { flex-direction: column-reverse; }
+      .cleanup-actions button { width: 100%; }
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v1.9"></script>
+  <script src="firebase-sync.js?v=v2.3"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <meta name="apple-mobile-web-app-title" content="U.E. Ecologica N. B.">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v1.9"></script>
+  <script defer src="pwa.js?v=v2.3"></script>
 </head>
 <body>
-  <a class="cache-maintenance" href="limpiar-cache.html" title="Limpiar cache de la aplicacion" aria-label="Limpiar cache de la aplicacion">
-    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-    <span>Actualizar app</span>
-  </a>
+  <button class="cache-maintenance" type="button" onclick="abrirModalLimpiezaTotal()" title="Limpieza de cache" aria-label="Limpieza de cache">
+    <i class="bi bi-brush-fill" aria-hidden="true"></i>
+  </button>
 
   <main class="login-card">
     <img class="school-logo" src="images/logo-nueva-bolivia.png" alt="Unidad Educativa Ecologica Nueva Bolivia">
@@ -131,16 +208,95 @@
         <input id="usuario" class="form-control form-control-lg" autocomplete="username" required>
       </div>
       <div class="mb-3">
-        <label for="clave" class="form-label">Contraseña</label>
+        <label for="clave" class="form-label">Contrase?a</label>
         <input id="clave" class="form-control form-control-lg" type="password" autocomplete="current-password" required>
       </div>
-      <div id="mensaje" class="alert alert-danger py-2 d-none">Usuario o contraseña incorrectos.</div>
+      <div id="mensaje" class="alert alert-danger py-2 d-none">Usuario o contrase?a incorrectos.</div>
       <button class="btn btn-primary btn-login w-100" type="submit">Ingresar</button>
     </form>
-    <p class="app-version">Versión v1.9</p>
+    <p class="app-version">Versi?n v2.3</p>
   </main>
 
+  <div id="modalLimpiezaLocal" class="cleanup-modal" role="dialog" aria-modal="true" aria-labelledby="tituloLimpiezaLocal">
+    <div class="cleanup-box">
+      <div class="cleanup-icon"><i class="bi bi-brush-fill" aria-hidden="true"></i></div>
+      <h2 id="tituloLimpiezaLocal">Limpieza de cache</h2>
+      <p>Esto actualizara la aplicacion en este dispositivo y quitara archivos antiguos guardados por versiones anteriores. Los datos del sistema en internet no se borran.</p>
+      <div class="cleanup-progress" aria-hidden="true"><span id="barraLimpiezaLocal"></span></div>
+      <div id="estadoLimpiezaLocal" class="cleanup-status">Esperando confirmacion.</div>
+      <div class="cleanup-actions">
+        <button id="btnCancelarLimpieza" class="cleanup-cancel" type="button" onclick="cerrarModalLimpiezaTotal()">Cancelar</button>
+        <button id="btnConfirmarLimpieza" class="cleanup-confirm" type="button" onclick="confirmarLimpiezaTotal()">Limpiar cache</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    function esperarLimpieza(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function actualizarProgresoLimpieza(porcentaje, texto) {
+      const barra = document.getElementById("barraLimpiezaLocal");
+      const estado = document.getElementById("estadoLimpiezaLocal");
+      if (barra) barra.style.width = porcentaje + "%";
+      if (estado) estado.textContent = texto;
+    }
+
+    function abrirModalLimpiezaTotal() {
+      const modal = document.getElementById("modalLimpiezaLocal");
+      if (!modal) return;
+      const btnCancelar = document.getElementById("btnCancelarLimpieza");
+      const btnConfirmar = document.getElementById("btnConfirmarLimpieza");
+      if (btnCancelar) btnCancelar.disabled = false;
+      if (btnConfirmar) btnConfirmar.disabled = false;
+      actualizarProgresoLimpieza(0, "Esperando confirmacion.");
+      modal.classList.add("show");
+    }
+
+    function cerrarModalLimpiezaTotal() {
+      const modal = document.getElementById("modalLimpiezaLocal");
+      if (modal) modal.classList.remove("show");
+    }
+
+    async function confirmarLimpiezaTotal() {
+      const btnCancelar = document.getElementById("btnCancelarLimpieza");
+      const btnConfirmar = document.getElementById("btnConfirmarLimpieza");
+      btnCancelar.disabled = true;
+      btnConfirmar.disabled = true;
+      try {
+        actualizarProgresoLimpieza(10, "Preparando actualizacion de la app...");
+        await esperarLimpieza(250);
+
+        if ("serviceWorker" in navigator) {
+          actualizarProgresoLimpieza(28, "Quitando PWA antigua...");
+          const registros = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registros.map(registro => registro.unregister()));
+        }
+        await esperarLimpieza(250);
+
+        if ("caches" in window) {
+          actualizarProgresoLimpieza(52, "Borrando archivos guardados en cache...");
+          const claves = await caches.keys();
+          await Promise.all(claves.map(clave => caches.delete(clave)));
+        }
+        await esperarLimpieza(250);
+
+        actualizarProgresoLimpieza(76, "Quitando datos antiguos de versiones anteriores...");
+        localStorage.clear();
+        sessionStorage.clear();
+        await esperarLimpieza(300);
+
+        actualizarProgresoLimpieza(100, "Listo. Cargando sistema limpio...");
+        await esperarLimpieza(450);
+        window.location.replace("index.html?limpiezaCache=" + Date.now());
+      } catch (error) {
+        actualizarProgresoLimpieza(100, "No se pudo completar la limpieza. Recarga e intenta nuevamente.");
+        btnCancelar.disabled = false;
+        btnConfirmar.disabled = false;
+      }
+    }
+
     function leerJSON(clave, inicial = {}) {
       try { return JSON.parse(localStorage.getItem(clave) || JSON.stringify(inicial)); }
       catch (error) { return inicial; }
@@ -220,7 +376,7 @@
         window.location.href = "admin.html";
         return true;
       } catch (error) {
-        mostrarMensaje("Correo o contrasena de administrador incorrectos.");
+        mostrarMensaje("Correo o contrase?a de administrador incorrectos.");
         return true;
       }
     }
@@ -316,7 +472,7 @@
         return;
       }
 
-      mostrarMensaje("Usuario o contrasena incorrectos.");
+      mostrarMensaje("Usuario o contrase?a incorrectos.");
     });
   </script>
 </body>

@@ -14,7 +14,7 @@
 <body>
   <main class="box">
     <h1>Actualizando sistema</h1>
-    <p id="estado">Limpiando cache anterior. Espere un momento...</p>
+    <p id="estado">Limpiando cache y datos locales. Espere un momento...</p>
     <button id="btn" type="button" hidden>Entrar al sistema</button>
   </main>
   <script>
@@ -26,17 +26,17 @@
         }
         if('caches' in window){
           const keys=await caches.keys();
-          await Promise.all(keys.filter(key=>key.startsWith('nueva-bolivia-pwa-')).map(key=>caches.delete(key)));
+          await Promise.all(keys.map(key=>caches.delete(key)));
         }
-        localStorage.removeItem('__pwaCacheCleanupVersion');
-        Object.keys(sessionStorage).forEach(key=>{ if(key.startsWith('__pwaCacheCleanupReloaded:')) sessionStorage.removeItem(key); });
+        localStorage.clear();
+        sessionStorage.clear();
         document.getElementById('estado').textContent='Listo. Ahora entra nuevamente al sistema.';
       }catch(error){
         document.getElementById('estado').textContent='No se pudo limpiar automaticamente. Recargue la pagina.';
       }
       const btn=document.getElementById('btn');
       btn.hidden=false;
-      btn.onclick=()=>window.location.replace('index.html?actualizado=v1.9');
+      btn.onclick=()=>window.location.replace('index.html?actualizado=v2.3');
     }
     limpiar();
   </script>
