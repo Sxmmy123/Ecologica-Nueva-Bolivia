@@ -246,10 +246,6 @@
     .attendance-table .total-head { background:#0f766e; min-width:38px; width:38px; }
     .attendance-table .total-cell { background:#f8fafc; color:#12355b; font-weight:900; }
     .attendance-lock-note { background:#fff8e1; border:1px solid #ffe08a; border-radius:8px; color:#745100; font-size:13px; font-weight:800; margin-bottom:10px; padding:8px 10px; }
-    .attendance-edit-log { background:#f8fafc; border:1px solid #dbe7ef; border-radius:8px; color:#516070; font-size:12px; margin:8px 0 10px; padding:8px 10px; }
-    .attendance-edit-log summary { cursor:pointer; font-weight:900; list-style:none; }
-    .attendance-edit-log summary::-webkit-details-marker { display:none; }
-    .attendance-edit-log ul { margin:8px 0 0; padding-left:18px; }
     .attendance-actions { align-items:center; display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; margin:10px 0; }
     .attendance-actions .btn { font-weight:900; }
     .trimester-summary { align-items:center; background:#fff; border:1px solid #dbe7ef; border-left:8px solid #12355b; border-radius:10px; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; margin-bottom:12px; padding:12px 14px; }
@@ -388,6 +384,12 @@
   if (!anio) anio = hoy.getFullYear();
   if (!mes) mes = hoy.getMonth() + 1;
   if (!dia) dia = hoy.getDate();
+  const fechaInicial = new Date(anio, mes - 1, dia);
+  if (fechaInicial.getDay() === 6) fechaInicial.setDate(fechaInicial.getDate() - 1);
+  if (fechaInicial.getDay() === 0) fechaInicial.setDate(fechaInicial.getDate() + 1);
+  anio = fechaInicial.getFullYear();
+  mes = fechaInicial.getMonth() + 1;
+  dia = fechaInicial.getDate();
   const esHoy = hoy.getFullYear() === anio &&
                 hoy.getMonth() + 1 === mes &&
                 hoy.getDate() === dia;
@@ -405,7 +407,6 @@
   let cursoVistaActual = normalizarCurso(localStorage.getItem("cursoSeleccionado") || "");
   let trimestrePanelAbierto = false;
   let modoEdicionAsistenciaActivo = false;
-  const edicionesAsistenciaSesion = new Set();
 
   function normalizarCurso(nombre) {
     const texto = String(nombre || "")
@@ -447,16 +448,33 @@
         curso: pendiente.curso,
         alumno: pendiente.alumno,
         estado: pendiente.estado,
-        trimestre: pendiente.trimestre
+        trimestre: pendiente.trimestre,
+        enEdicion: pendiente.enEdicion
       });
       if (guardado) {
         asistenciaAlumnoPendiente = null;
         return true;
       }
+      if (typeof window.firebaseMarkPackage === "function") {
+        const respaldo = await window.firebaseMarkPackage("asistencias");
+        if (respaldo) {
+          if (pendiente.trimestre) await window.firebaseMarkPackage("trimestresAsistencia").catch(() => false);
+          asistenciaAlumnoPendiente = null;
+          return true;
+        }
+      }
       if (!silencioso) alert("No se pudo guardar la asistencia en Firebase. Revise la conexion e intente nuevamente.");
       return false;
     } catch (error) {
       console.error("No se pudo confirmar asistencia", error);
+      if (typeof window.firebaseMarkPackage === "function") {
+        const respaldo = await window.firebaseMarkPackage("asistencias").catch(() => false);
+        if (respaldo) {
+          if (pendiente.trimestre) await window.firebaseMarkPackage("trimestresAsistencia").catch(() => false);
+          asistenciaAlumnoPendiente = null;
+          return true;
+        }
+      }
       if (!silencioso) alert("No se pudo guardar la asistencia en Firebase. Revise la conexion e intente nuevamente.");
       return false;
     } finally {
@@ -625,41 +643,6 @@
 
   function puedeEditarAsistencia(curso, modoEdicion) {
     return !esVistaSoloLectura() && (modoEdicion || !asistenciaBloqueadaPorHorario(curso));
-  }
-
-  function claveEdicionAsistencia(curso) {
-    return `${claveDeFecha()}|${curso}`;
-  }
-
-  function registrarEdicionAsistencia(curso) {
-    const clave = claveEdicionAsistencia(curso);
-    if (edicionesAsistenciaSesion.has(clave)) return;
-    edicionesAsistenciaSesion.add(clave);
-    const historial = leerJSON("asistenciaEdiciones", {});
-    if (!Array.isArray(historial[clave])) historial[clave] = [];
-    historial[clave].push({
-      fecha: claveDeFecha(),
-      curso,
-      docente: docenteActualNombre(),
-      usuario: docenteActualUsuario(),
-      hora: new Date().toLocaleString("es-BO")
-    });
-    guardarLocalAsistencia("asistenciaEdiciones", historial);
-    if (typeof window.firebaseMarkPackage === "function") window.firebaseMarkPackage("asistenciaEdiciones").catch(() => {});
-  }
-
-  function renderHistorialEdicionAsistencia(curso) {
-    const historial = leerJSON("asistenciaEdiciones", {});
-    const registros = historial[claveEdicionAsistencia(curso)] || [];
-    if (!registros.length) return "";
-    return `
-      <details class="attendance-edit-log">
-        <summary><i class="bi bi-pencil-square"></i> Asistencia editada</summary>
-        <ul>
-          ${registros.slice(-5).reverse().map(item => `<li>Editada por ${escaparHTML(item.docente || "Docente")} - ${escaparHTML(item.hora || "")}</li>`).join("")}
-        </ul>
-      </details>
-    `;
   }
 
   function cambiarTrimestre(valor) {
@@ -1333,8 +1316,7 @@
       div.innerHTML = `
         ${diaRegistrado ? htmlTotalesAsistencia(totales) : '<div class="alert alert-info py-2 mb-2">Dia sin registro de asistencia.</div>'}
         ${bloqueada && !modoEdicion ? '<div class="attendance-lock-note"><i class="bi bi-lock-fill"></i> Asistencia bloqueada despues del segundo periodo. Para corregir, usa Editar asistencia.</div>' : ""}
-        ${modoEdicion && bloqueada ? '<div class="attendance-lock-note"><i class="bi bi-unlock-fill"></i> Modo edicion activo. La correccion quedara registrada con el docente.</div>' : ""}
-        ${renderHistorialEdicionAsistencia(curso)}
+        ${modoEdicion && bloqueada ? '<div class="attendance-lock-note"><i class="bi bi-unlock-fill"></i> Modo edicion activo. La correccion quedara registrada en la asistencia del alumno.</div>' : ""}
       `;
 
       if (listaAlumnos.length === 0) {
@@ -1373,7 +1355,6 @@
               guardarLocalAsistencia("asistencias", asistencias);
               actualizarAlumnoAsistenciaEnPantalla(divAlumno, nuevoEstado);
               actualizarTotalesAsistenciaPantalla(curso, asistencias);
-              if (bloqueada || modoEdicion) registrarEdicionAsistencia(curso);
               const trimestresAsistencia = JSON.parse(localStorage.getItem("trimestresAsistencia")) || {};
               const trimestre = trimestreActual();
               trimestresAsistencia[claveDeFecha()] = trimestre;
@@ -1385,7 +1366,7 @@
                 alumno: nombre,
                 estado: nuevoEstado,
                 trimestre,
-                enEdicion: true
+                enEdicion: bloqueada || modoEdicion
               };
 
               const guardadoActual = await confirmarAsistenciaAlumnoPendiente(true);

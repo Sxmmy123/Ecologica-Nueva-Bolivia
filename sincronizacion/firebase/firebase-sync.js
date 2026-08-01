@@ -42,15 +42,13 @@
 
   const COURSE_ENTRY_KEYS = {
     asistencias: "asistencias",
-    trimestresAsistencia: "trimestres_asistencia",
-    asistenciaEdiciones: "asistencia_ediciones"
+    trimestresAsistencia: "trimestres_asistencia"
   };
 
   const TEACHER_SYNC_KEYS = [
     "docentes",
     "asistencias",
     "trimestresAsistencia",
-    "asistenciaEdiciones",
     "actividades",
     "notas",
     "ser",
@@ -778,7 +776,6 @@
     if (key === "actividades") return recordsForActivities(value, updatedAt);
     if (key === "notas") return recordsForNotes(value, updatedAt);
     if (key === "asistencias") return recordsForAttendance(value, updatedAt);
-    if (key === "asistenciaEdiciones") return recordsForAttendanceEdits(value, updatedAt);
 
     if (COURSE_OBJECT_KEYS[key]) {
       return groupObjectByCourse(value).map(group => ({
@@ -874,6 +871,13 @@
 
   function recordRef(record) {
     return baseRef.child(rtdbKey(record.collection)).child(rtdbKey(record.id));
+  }
+
+  async function writeDatabasePaths(updates) {
+    const entries = Object.entries(updates || {}).filter(([path]) => path);
+    if (!entries.length) return false;
+    await Promise.all(entries.map(([path, value]) => baseRef.child(path).set(value)));
+    return true;
   }
 
   async function writeItem(item) {
@@ -1271,16 +1275,6 @@
         if (scope?.studentName && data.alumno !== scope.studentName) return;
         const entryKey = [data.fecha, normalizeCourseName(data.course), data.alumno].join("|");
         obj[entryKey] = data.value || "blanco";
-        updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
-      });
-    }
-
-    if (key === "asistenciaEdiciones") {
-      const detailDocs = await readCollectionByCourse("asistencia_ediciones_detalle", scope?.courses || null);
-      detailDocs.forEach(({ data }) => {
-        if (!courseAllowed(scope, data.course)) return;
-        const entryKey = [data.fecha, normalizeCourseName(data.course), data.alumno].filter(Boolean).join("|");
-        obj[entryKey] = parseStoredValue(data.value, []);
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
       });
     }
@@ -1708,7 +1702,7 @@
       };
     }
 
-    await baseRef.update(updates);
+    await writeDatabasePaths(updates);
     setPackageMeta("asistencias", updatedAt, "synced");
     if (trimestre) setPackageMeta("trimestresAsistencia", updatedAt, "synced");
     await writeDirectorStatsForKey("asistencias", updatedAt).catch(error => setLastError(error, "actualizando estadisticas asistencia"));
@@ -1718,7 +1712,7 @@
     return true;
   };
 
-  window.firebaseSaveAttendanceStudent = async function ({ fecha, curso, alumno, estado, trimestre }) {
+  window.firebaseSaveAttendanceStudent = async function ({ fecha, curso, alumno, estado, trimestre, enEdicion = false }) {
     const course = normalizeCourseName(curso || "general");
     const student = String(alumno || "").trim();
     const state = estado || "blanco";
@@ -1732,6 +1726,8 @@
 
     const updatedAt = Date.now();
     const entryKey = [fecha, course, student].join("|");
+    const docenteNombre = sessionStorage.getItem("docenteNombre") || sessionStorage.getItem("usuarioNombre") || "";
+    const docenteUsuario = sessionStorage.getItem("docenteUsuario") || "";
     const updates = {};
     updates[[rtdbKey("asistencias_alumno"), rtdbKey(slug(entryKey))].join("/")] = {
       key: "asistencias",
@@ -1740,6 +1736,11 @@
       course,
       alumno: student,
       value: state,
+      registradoPor: docenteNombre,
+      registradoUsuario: docenteUsuario,
+      editadoPor: enEdicion ? docenteNombre : "",
+      editadoUsuario: enEdicion ? docenteUsuario : "",
+      editadoEn: enEdicion ? updatedAt : 0,
       operation: "set",
       updatedAt,
       deviceId: deviceId(),
@@ -1762,7 +1763,7 @@
       };
     }
 
-    await baseRef.update(updates);
+    await writeDatabasePaths(updates);
     setPackageMeta("asistencias", updatedAt, "synced");
     if (trimestre) setPackageMeta("trimestresAsistencia", updatedAt, "synced");
     await writeDirectorStatsForKey("asistencias", updatedAt).catch(error => setLastError(error, "actualizando estadisticas asistencia alumno"));

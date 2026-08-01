@@ -31,32 +31,8 @@
       });
     }
 
-    function recordsForAttendanceEdits(value, updatedAt) {
-      const parsed = parseJSON(value, {});
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-      return Object.entries(parsed).map(([entryKey, edits]) => {
-        const parts = String(entryKey).split("|");
-        const fecha = parts[0] || "";
-        const course = normalizeCourseName(parts[1] || "general");
-        return {
-          collection: "asistencia_ediciones_detalle",
-          id: slug([fecha, course].join("|")),
-          data: {
-            key: "asistenciaEdiciones",
-            entryKey: [fecha, course].join("|"),
-            fecha,
-            course,
-            value: stringify(edits),
-            operation: "set",
-            updatedAt
-          }
-        };
-      });
-    }
-
       return {
-        recordsForAttendance,
-        recordsForAttendanceEdits
+        recordsForAttendance
       };
     }
   };
