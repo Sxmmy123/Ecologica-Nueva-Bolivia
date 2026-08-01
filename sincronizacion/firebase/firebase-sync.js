@@ -16,6 +16,9 @@
   const ONLINE_ONLY_VERSION = "online-v2-rtdb";
   const STRUCTURE_VERSION = "4";
   const RETRY_SYNC_DELAY = 30000;
+  const DIRECTOR_STATS_KEY = "estadisticasDirector";
+  const DIRECTOR_STATS_COLLECTION = "estadisticas_director";
+  const DIRECTOR_STATS_SOURCE_KEYS = new Set(["alumnos", "actividades", "notas", "asistencias", "trimestresAsistencia"]);
 
   const META_KEYS = new Set([PENDING_KEY, LAST_SYNC_KEY, LAST_PULL_KEY, STATUS_KEY, STRUCTURE_KEY, LAST_ERROR_KEY, LOCAL_DIRTY_KEY, PACKAGE_META_KEY, DEVICE_ID_KEY, ONLINE_ONLY_KEY]);
   const KEY_ALIASES = { alumnosci: "alumnosCI" };
@@ -88,22 +91,6 @@
   let baseRef = null;
   let legacyRef = null;
   let permissionBlocked = false;
-
-  function currentRole() {
-    return sessionStorage.getItem("sesionRol") || "";
-  }
-
-  function isViewerRole() {
-    return currentRole() === "director" || currentRole() === "alumno";
-  }
-
-  function isAdminRole() {
-    return currentRole() === "admin";
-  }
-
-  function isTeacherRole() {
-    return currentRole() === "docente";
-  }
 
   function canonicalKey(key) {
     const text = String(key || "");
@@ -475,28 +462,43 @@
     console.error("Firebase sync error", context, code, message);
   }
 
-  function storageCourseKey(key) {
-    const normalized = canonicalKey(key);
-    const spec = COURSE_STORAGE_PREFIXES.find(item => normalized.startsWith(item.prefix));
-    if (!spec) return null;
-    return {
-      collection: spec.collection,
-      localKey: normalized,
-      course: normalized.slice(spec.prefix.length)
-    };
-  }
+  const firebaseStorage = window.FirebaseSchoolSyncStorage.create({
+    canonicalKey,
+    parseJSON,
+    normalizeCourseName,
+    stringify,
+    rawGetItem,
+    DEFAULT_COURSES,
+    META_KEYS,
+    SINGLE_KEYS,
+    COURSE_OBJECT_KEYS,
+    COURSE_ENTRY_KEYS,
+    COURSE_STORAGE_PREFIXES
+  });
+  const {
+    storageCourseKey,
+    shouldSync,
+    collectionNameForKey,
+    knownCourses,
+    groupObjectByCourse,
+    groupEntriesByCourse
+  } = firebaseStorage;
 
-  function shouldSync(key) {
-    const normalized = canonicalKey(key);
-    if (!normalized || META_KEYS.has(normalized)) return false;
-    return Boolean(
-      SINGLE_KEYS[normalized] ||
-      COURSE_OBJECT_KEYS[normalized] ||
-      COURSE_ENTRY_KEYS[normalized] ||
-      normalized === "actividades" ||
-      storageCourseKey(normalized)
-    );
-  }
+  const firebaseRoles = window.FirebaseSchoolSyncRoles.create({
+    sessionStorage,
+    canonicalKey,
+    storageCourseKey,
+    TEACHER_SYNC_KEYS
+  });
+  const {
+    currentRole,
+    isViewerRole,
+    isAdminRole,
+    isTeacherRole,
+    adminOwnsKey,
+    teacherOwnsKey,
+    canWriteKey
+  } = firebaseRoles;
 
   function resetLegacyLocalDataIfNeeded() {
     if (rawGetItem(ONLINE_ONLY_KEY) === ONLINE_ONLY_VERSION) return false;
@@ -511,26 +513,6 @@
     rawSetItem(STRUCTURE_KEY, STRUCTURE_VERSION);
     setStatus("local-antiguo-limpiado");
     return true;
-  }
-
-  function adminOwnsKey(key) {
-    const normalized = canonicalKey(key);
-    return Boolean(
-      ["cursos", "alumnos", "cursoColores", "director", "docentes", "horasPrimaria"].includes(normalized) ||
-      storageCourseKey(normalized)
-    );
-  }
-
-  function teacherOwnsKey(key) {
-    const normalized = canonicalKey(key);
-    return TEACHER_SYNC_KEYS.includes(normalized);
-  }
-
-  function canWriteKey(key) {
-    if (isViewerRole()) return false;
-    if (isAdminRole()) return adminOwnsKey(key);
-    if (isTeacherRole()) return teacherOwnsKey(key);
-    return false;
   }
 
   function canWriteNow(key) {
@@ -714,15 +696,6 @@
     return true;
   }
 
-  function collectionNameForKey(key) {
-    const normalized = canonicalKey(key);
-    if (SINGLE_KEYS[normalized]) return SINGLE_KEYS[normalized].collection;
-    if (COURSE_OBJECT_KEYS[normalized]) return COURSE_OBJECT_KEYS[normalized];
-    if (COURSE_ENTRY_KEYS[normalized]) return COURSE_ENTRY_KEYS[normalized];
-    const courseKey = storageCourseKey(normalized);
-    return courseKey ? courseKey.collection : null;
-  }
-
   function mergeEntriesWithoutCourse(current, course) {
     const result = {};
     Object.entries(current || {}).forEach(([entryKey, value]) => {
@@ -757,242 +730,33 @@
     return parts.length >= 2 ? parts[1] : "general";
   }
 
-  function groupObjectByCourse(rawValue) {
-    const parsed = parseJSON(rawValue, {});
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-    return Object.entries(parsed).map(([course, value]) => ({ course, value }));
-  }
+  const firebaseNotes = window.FirebaseSchoolSyncNotes.create({
+    parseJSON,
+    knownCourses,
+    normalizeCourseName,
+    slug,
+    stringify
+  });
+  const {
+    groupActivities,
+    activityDocId,
+    activityScopeId,
+    recordsForActivities,
+    noteDocId,
+    noteScopeId,
+    recordsForNotes
+  } = firebaseNotes;
 
-  function knownCourses() {
-    const set = new Set(DEFAULT_COURSES);
-    const courses = parseJSON(rawGetItem("cursos"), []);
-    if (Array.isArray(courses)) courses.forEach(course => course && set.add(normalizeCourseName(course)));
-
-    const alumnos = parseJSON(rawGetItem("alumnos"), {});
-    if (alumnos && typeof alumnos === "object" && !Array.isArray(alumnos)) {
-      Object.keys(alumnos).forEach(course => course && set.add(normalizeCourseName(course)));
-    }
-
-    const activities = parseJSON(rawGetItem("actividades"), []);
-    if (Array.isArray(activities)) {
-      activities.forEach(activity => activity?.curso && set.add(normalizeCourseName(activity.curso)));
-    }
-
-    const docentes = parseJSON(rawGetItem("docentes"), []);
-    if (Array.isArray(docentes)) {
-      docentes.forEach(docente => {
-        if (docente?.curso) set.add(normalizeCourseName(docente.curso));
-        if (Array.isArray(docente?.asignaciones)) {
-          docente.asignaciones.forEach(asig => asig?.curso && set.add(normalizeCourseName(asig.curso)));
-        }
-      });
-    }
-
-    return [...set].filter(Boolean);
-  }
-
-  function groupEntriesByCourse(rawValue) {
-    const parsed = parseJSON(rawValue, {});
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-    const groups = {};
-    Object.entries(parsed).forEach(([entryKey, value]) => {
-      const course = courseFromEntryKey(entryKey);
-      if (!groups[course]) groups[course] = {};
-      groups[course][entryKey] = value;
-    });
-    return Object.entries(groups).map(([course, value]) => ({ course, value }));
-  }
-
-  function groupActivities(rawValue) {
-    const parsed = parseJSON(rawValue, []);
-    if (!Array.isArray(parsed)) return [];
-    const groups = {};
-    knownCourses().forEach(course => {
-      groups[`hacer|${course}`] = { collection: "hacer", course, value: [] };
-      groups[`saber|${course}`] = { collection: "saber", course, value: [] };
-    });
-    parsed.forEach(activity => {
-      const collection = activity?.categoria === "Saber" || activity?.tipo === "Examen" ? "saber" : "hacer";
-      const course = normalizeCourseName(activity?.curso || "general");
-      const groupKey = `${collection}|${course}`;
-      if (!groups[groupKey]) groups[groupKey] = { collection, course, value: [] };
-      groups[groupKey].value.push({ ...activity, curso: course });
-    });
-    return Object.values(groups);
-  }
-
-  function activityDocId(activity) {
-    return slug([
-      normalizeCourseName(activity?.curso || "general"),
-      activity?.materia || "sin_materia",
-      activity?.trimestre || "sin_trimestre",
-      activity?.fecha || "sin_fecha",
-      activity?.tipo || "actividad",
-      activity?.titulo || "sin_titulo"
-    ].join("|"));
-  }
-
-  function activityScopeId(activity) {
-    return slug([
-      normalizeCourseName(activity?.curso || "general"),
-      activity?.materia || "sin_materia"
-    ].join("|"));
-  }
-
-  function recordsForActivities(value, updatedAt) {
-    const parsed = parseJSON(value, []);
-    if (!Array.isArray(parsed)) return [];
-    const scopes = {};
-    const records = parsed.map(activity => {
-      const course = normalizeCourseName(activity?.curso || "general");
-      const normalized = { ...activity, curso: course };
-      const id = activityDocId(normalized);
-      const scopeId = activityScopeId(normalized);
-      if (!scopes[scopeId]) scopes[scopeId] = { course, materia: normalized.materia || "", ids: [] };
-      scopes[scopeId].ids.push(id);
-      return {
-        collection: "actividades_detalle",
-        id,
-        data: {
-          key: "actividades",
-          scopeId,
-          course,
-          materia: normalized.materia || "",
-          value: stringify(normalized),
-          operation: "set",
-          updatedAt
-        }
-      };
-    });
-
-    const indexes = Object.entries(scopes).map(([id, scope]) => ({
-      collection: "actividades_index",
-      id,
-      data: {
-        key: "actividades",
-        scopeId: id,
-        course: scope.course,
-        materia: scope.materia,
-        activeIds: stringify([...new Set(scope.ids)]),
-        operation: "set",
-        updatedAt
-      }
-    }));
-
-    return [...indexes, ...records];
-  }
-
-  function noteDocId(course, trimestre, materia, titulo) {
-    return slug([course || "general", trimestre || "sin_trimestre", materia || "sin_materia", titulo || "sin_titulo"].join("|"));
-  }
-
-  function noteScopeId(course, trimestre, materia) {
-    return slug([course || "general", trimestre || "sin_trimestre", materia || "sin_materia"].join("|"));
-  }
-
-  function recordsForNotes(value, updatedAt) {
-    const parsed = parseJSON(value, {});
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-    const records = [];
-    const scopes = {};
-
-    Object.entries(parsed).forEach(([courseRaw, trimestres]) => {
-      const course = normalizeCourseName(courseRaw);
-      if (!trimestres || typeof trimestres !== "object" || Array.isArray(trimestres)) return;
-      Object.entries(trimestres).forEach(([trimestre, materias]) => {
-        if (!materias || typeof materias !== "object" || Array.isArray(materias)) return;
-        Object.entries(materias).forEach(([materia, actividades]) => {
-          if (!actividades || typeof actividades !== "object" || Array.isArray(actividades)) return;
-          const scopeId = noteScopeId(course, trimestre, materia);
-          if (!scopes[scopeId]) scopes[scopeId] = { course, trimestre, materia, ids: [] };
-          Object.entries(actividades).forEach(([titulo, registro]) => {
-            const id = noteDocId(course, trimestre, materia, titulo);
-            scopes[scopeId].ids.push(id);
-            records.push({
-              collection: "notas_detalle",
-              id,
-              data: {
-                key: "notas",
-                scopeId,
-                course,
-                trimestre,
-                materia,
-                titulo,
-                value: stringify(registro),
-                operation: "set",
-                updatedAt
-              }
-            });
-          });
-        });
-      });
-    });
-
-    const indexes = Object.entries(scopes).map(([id, scope]) => ({
-      collection: "notas_index",
-      id,
-      data: {
-        key: "notas",
-        scopeId: id,
-        course: scope.course,
-        trimestre: scope.trimestre,
-        materia: scope.materia,
-        activeIds: stringify([...new Set(scope.ids)]),
-        operation: "set",
-        updatedAt
-      }
-    }));
-
-    return [...indexes, ...records];
-  }
-
-  function recordsForAttendance(value, updatedAt) {
-    const parsed = parseJSON(value, {});
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-    return Object.entries(parsed).map(([entryKey, estado]) => {
-      const parts = String(entryKey).split("|");
-      const fecha = parts[0] || "";
-      const course = normalizeCourseName(parts[1] || "general");
-      const alumno = parts.slice(2).join("|");
-      return {
-        collection: "asistencias_alumno",
-        id: slug([fecha, course, alumno].join("|")),
-        data: {
-          key: "asistencias",
-          entryKey: [fecha, course, alumno].join("|"),
-          fecha,
-          course,
-          alumno,
-          value: estado,
-          operation: "set",
-          updatedAt
-        }
-      };
-    });
-  }
-
-  function recordsForAttendanceEdits(value, updatedAt) {
-    const parsed = parseJSON(value, {});
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
-    return Object.entries(parsed).map(([entryKey, edits]) => {
-      const parts = String(entryKey).split("|");
-      const fecha = parts[0] || "";
-      const course = normalizeCourseName(parts[1] || "general");
-      return {
-        collection: "asistencia_ediciones_detalle",
-        id: slug([fecha, course].join("|")),
-        data: {
-          key: "asistenciaEdiciones",
-          entryKey: [fecha, course].join("|"),
-          fecha,
-          course,
-          value: stringify(edits),
-          operation: "set",
-          updatedAt
-        }
-      };
-    });
-  }
+  const firebaseAttendance = window.FirebaseSchoolSyncAttendance.create({
+    parseJSON,
+    normalizeCourseName,
+    slug,
+    stringify
+  });
+  const {
+    recordsForAttendance,
+    recordsForAttendanceEdits
+  } = firebaseAttendance;
 
   function recordsForItem(item) {
     const key = canonicalKey(item.key);
@@ -1040,6 +804,35 @@
 
     return [];
   }
+
+
+  const firebaseStats = window.FirebaseSchoolSyncStats.create({
+    parseJSON,
+    rawGetItem,
+    normalizeCourseName,
+    canonicalKey,
+    stringify,
+    slug,
+    rtdbKey,
+    deviceId,
+    currentRole,
+    isViewerRole,
+    parseStoredValue,
+    timestampToMillis,
+    getBaseRef: () => baseRef,
+    getFirebase: () => window.firebase,
+    DIRECTOR_STATS_KEY,
+    DIRECTOR_STATS_COLLECTION,
+    DIRECTOR_STATS_SOURCE_KEYS
+  });
+  const {
+    readLocalJSON,
+    statsCourseNames,
+    statsBuildCourse,
+    statsCoursesForKey,
+    writeDirectorStatsForKey,
+    pullDirectorStats
+  } = firebaseStats;
 
   async function initFirebase() {
     const cfg = window.firebaseConfig || {};
@@ -1122,6 +915,7 @@
         setWorkMode(isTeacherRole() ? "docente-online" : "online");
         setStatus("guardando-database");
         const wrote = await writeItem({ ...item, key });
+        if (wrote) await writeDirectorStatsForKey(key, item.updatedAt || Date.now()).catch(error => setLastError(error, "guardando estadisticas director"));
         rawSetItem(STRUCTURE_KEY, STRUCTURE_VERSION);
         rawSetItem(LAST_SYNC_KEY, String(Date.now()));
         rawRemoveItem(LOCAL_DIRTY_KEY);
@@ -1248,7 +1042,8 @@
       includeNotes: true,
       includeActivities: true,
       includeStorage: true,
-      storageCollections: null
+      storageCollections: null,
+      includeDirectorStats: false
     };
 
     if (login) {
@@ -1258,6 +1053,7 @@
       scope.includeNotes = false;
       scope.includeActivities = false;
       scope.includeStorage = false;
+      scope.includeDirectorStats = false;
       return scope;
     }
 
@@ -1268,6 +1064,7 @@
       scope.includeNotes = ["notas.html", "alumno.html", "reportes.html"].includes(page);
       scope.includeActivities = ["mes.html", "calificar.html", "alumno.html", "reportes.html"].includes(page);
       scope.includeStorage = true;
+      scope.includeDirectorStats = ["reportes.html"].includes(page);
       scope.storageCollections = null;
       if (["dia.html", "reportes.html", "notas.html", "alumno.html"].includes(page)) {
         scope.courseEntryKeys = new Set(Object.keys(COURSE_ENTRY_KEYS));
@@ -1290,6 +1087,19 @@
       scope.includeActivities = true;
       scope.includeStorage = true;
       scope.storageCollections = new Set(["horarios", "horarios_docente", "materias", "materias_personalizadas", "materia_colores", "materias_modo"]);
+      return scope;
+    }
+
+
+    if (role === "director") {
+      scope.singleKeys = new Set(["cursos", "cursoColores", "director"]);
+      scope.includeDirectorStats = page === "reportes.html";
+      scope.courseObjectKeys = new Set(["alumnos", "notas", "ser", "serCriterios", "autoevaluacion", "autoevaluacionConfig"]);
+      scope.courseEntryKeys = new Set(Object.keys(COURSE_ENTRY_KEYS));
+      scope.includeNotes = ["notas.html", "alumno.html", "reportes.html"].includes(page);
+      scope.includeActivities = ["mes.html", "calificar.html", "alumno.html", "reportes.html"].includes(page);
+      scope.includeStorage = true;
+      scope.storageCollections = null;
       return scope;
     }
 
@@ -1567,6 +1377,7 @@
       await pullCourseEntries(next, key, collection, scope);
     }
     if (scope.includeActivities) await pullActivities(next, scope);
+    if (scope.includeDirectorStats) await pullDirectorStats(next);
     if (scope.includeStorage) {
       for (const spec of COURSE_STORAGE_PREFIXES) await pullStorageCourse(next, spec.prefix, spec.collection, scope);
     }
@@ -1810,6 +1621,162 @@
     window.location.href = "index.html";
   };
 
+  window.firebaseSetLocalOnly = function (key, value) {
+    rawSetItem(key, String(value));
+  };
+
+  window.firebaseLoadAttendanceDay = async function ({ fecha, curso }) {
+    const course = normalizeCourseName(curso || "general");
+    const courseLabel = String(curso || course).trim();
+    if (!fecha || !course || !navigator.onLine) return false;
+    if (!baseRef && !(await initFirebase())) return false;
+
+    const snapshot = await baseRef
+      .child(rtdbKey("asistencias_alumno"))
+      .orderByChild("fecha")
+      .equalTo(fecha)
+      .once("value");
+    const data = snapshot.val() || {};
+    const current = parseJSON(rawGetItem("asistencias"), {});
+    let changed = false;
+
+    Object.values(data).forEach(row => {
+      if (!row || normalizeCourseName(row.course) !== course) return;
+      const student = String(row.alumno || "").trim();
+      if (!student) return;
+      const remoteValue = row.value || row.estado || "blanco";
+      const keys = [
+        row.entryKey,
+        [row.fecha, course, student].join("|"),
+        [row.fecha, courseLabel, student].join("|")
+      ].filter(Boolean);
+
+      [...new Set(keys)].forEach(entryKey => {
+        if (!current[entryKey] || current[entryKey] === "blanco") {
+          current[entryKey] = remoteValue;
+          changed = true;
+        }
+      });
+    });
+
+    if (changed) rawSetItem("asistencias", stringify(current));
+    return true;
+  };
+
+  window.firebaseSaveAttendanceDay = async function ({ fecha, curso, alumnos, asistencias, trimestre }) {
+    const course = normalizeCourseName(curso || "general");
+    if (!fecha || !course || !Array.isArray(alumnos) || !alumnos.length) return false;
+    if (!canWriteKey("asistencias")) return false;
+    if (!navigator.onLine) {
+      notifyWriteBlocked("internet");
+      return false;
+    }
+    if (!baseRef && !(await initFirebase())) return false;
+
+    const updatedAt = Date.now();
+    const updates = {};
+    alumnos.forEach(nombre => {
+      const alumno = String(nombre || "").trim();
+      if (!alumno) return;
+      const entryKey = [fecha, course, alumno].join("|");
+      const estado = asistencias?.[entryKey] || "blanco";
+      const id = slug(entryKey);
+      updates[
+        [rtdbKey("asistencias_alumno"), rtdbKey(id)].join("/")
+      ] = {
+        key: "asistencias",
+        entryKey,
+        fecha,
+        course,
+        alumno,
+        value: estado,
+        operation: "set",
+        updatedAt,
+        deviceId: deviceId(),
+        role: currentRole(),
+        serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+      };
+    });
+
+    if (trimestre) {
+      const trimestres = parseJSON(rawGetItem("trimestresAsistencia"), {});
+      trimestres[fecha] = trimestre;
+      updates[[rtdbKey("trimestres_asistencia"), rtdbKey("general")].join("/")] = {
+        key: "trimestresAsistencia",
+        course: "general",
+        value: stringify(trimestres),
+        operation: "set",
+        updatedAt,
+        deviceId: deviceId(),
+        role: currentRole(),
+        serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+      };
+    }
+
+    await baseRef.update(updates);
+    setPackageMeta("asistencias", updatedAt, "synced");
+    if (trimestre) setPackageMeta("trimestresAsistencia", updatedAt, "synced");
+    await writeDirectorStatsForKey("asistencias", updatedAt).catch(error => setLastError(error, "actualizando estadisticas asistencia"));
+    rawSetItem(LAST_SYNC_KEY, String(Date.now()));
+    setStatus("guardado-database");
+    setWorkMode("docente-online");
+    return true;
+  };
+
+  window.firebaseSaveAttendanceStudent = async function ({ fecha, curso, alumno, estado, trimestre }) {
+    const course = normalizeCourseName(curso || "general");
+    const student = String(alumno || "").trim();
+    const state = estado || "blanco";
+    if (!fecha || !course || !student) return false;
+    if (!canWriteKey("asistencias")) return false;
+    if (!navigator.onLine) {
+      notifyWriteBlocked("internet");
+      return false;
+    }
+    if (!baseRef && !(await initFirebase())) return false;
+
+    const updatedAt = Date.now();
+    const entryKey = [fecha, course, student].join("|");
+    const updates = {};
+    updates[[rtdbKey("asistencias_alumno"), rtdbKey(slug(entryKey))].join("/")] = {
+      key: "asistencias",
+      entryKey,
+      fecha,
+      course,
+      alumno: student,
+      value: state,
+      operation: "set",
+      updatedAt,
+      deviceId: deviceId(),
+      role: currentRole(),
+      serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    if (trimestre) {
+      const trimestres = parseJSON(rawGetItem("trimestresAsistencia"), {});
+      trimestres[fecha] = trimestre;
+      updates[[rtdbKey("trimestres_asistencia"), rtdbKey("general")].join("/")] = {
+        key: "trimestresAsistencia",
+        course: "general",
+        value: stringify(trimestres),
+        operation: "set",
+        updatedAt,
+        deviceId: deviceId(),
+        role: currentRole(),
+        serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+      };
+    }
+
+    await baseRef.update(updates);
+    setPackageMeta("asistencias", updatedAt, "synced");
+    if (trimestre) setPackageMeta("trimestresAsistencia", updatedAt, "synced");
+    await writeDirectorStatsForKey("asistencias", updatedAt).catch(error => setLastError(error, "actualizando estadisticas asistencia alumno"));
+    rawSetItem(LAST_SYNC_KEY, String(Date.now()));
+    setStatus("guardado-database");
+    setWorkMode("docente-online");
+    return true;
+  };
+
   window.firebaseMarkPackage = function (key) {
     const normalized = canonicalKey(key);
     if (!shouldSync(normalized) || !canWriteKey(normalized)) return Promise.resolve(false);
@@ -1904,6 +1871,32 @@
       return true;
     } catch (error) {
       setLastError(error, "login firebase");
+      return false;
+    }
+  };
+
+  window.firebaseRebuildDirectorStats = async function () {
+    try {
+      if (isViewerRole()) return false;
+      if (!baseRef && !(await initFirebase())) return false;
+      const courses = statsCourseNames();
+      if (!courses.length) return false;
+      await Promise.all(courses.map(course => {
+        const value = statsBuildCourse(course);
+        return baseRef.child(DIRECTOR_STATS_COLLECTION).child(rtdbKey(slug(course))).set({
+          key: DIRECTOR_STATS_KEY,
+          course,
+          value: stringify(value),
+          operation: "set",
+          updatedAt: Date.now(),
+          deviceId: deviceId(),
+          role: currentRole(),
+          serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+      }));
+      return true;
+    } catch (error) {
+      setLastError(error, "regenerando estadisticas director");
       return false;
     }
   };

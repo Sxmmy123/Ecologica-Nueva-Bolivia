@@ -25,13 +25,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="firebase-config.js"></script>
-  <script src="firebase-sync.js?v=v2.5"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.13"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.5"></script>
+  <script defer src="pwa.js?v=v2.13"></script>
 </head>
 <body>
   <script>
@@ -232,13 +237,23 @@
       return ["verde", "amarillo", "morado"].includes(estadoAsistencia(nombre));
     }
 
-    function abrirActividad(actividadElegida) {
+    async function cargarAsistenciaParaCalificar() {
+      if (!window.firebaseLoadAttendanceDay) return;
+      try {
+        await window.firebaseLoadAttendanceDay({ fecha, curso });
+      } catch (error) {
+        console.info("No se pudo cargar la asistencia del dia:", error.message);
+      }
+    }
+
+    async function abrirActividad(actividadElegida) {
       actividad = actividadElegida;
       alumno = "";
       nota = null;
       document.getElementById("tituloActividad").textContent = actividad.titulo;
       document.getElementById("detalleActividad").textContent =
         `${actividad.materia || "-"} | ${actividad.tipo || "Actividad"} | ${actividad.notaMaxima || "-"} pts`;
+      await cargarAsistenciaParaCalificar();
       prepararAlumnos();
       if (alumnosPresentes.length) alumno = alumnosPresentes[0];
       dibujarAlumnos();
