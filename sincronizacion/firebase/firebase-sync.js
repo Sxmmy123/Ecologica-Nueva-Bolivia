@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   "use strict";
 
   const APP_ID = window.APP_SYNC_ID || "apk-asistencia-colegio";
@@ -1011,7 +1011,7 @@
       return fromSession.map(asig => ({
         curso: normalizeCourseName(asig?.curso || ""),
         materias: Array.isArray(asig?.materias) ? [...new Set(asig.materias.filter(Boolean))] : []
-      })).filter(asig => asig.curso && asig.materias.length);
+      })).filter(asig => asig.curso);
     }
 
     const docentes = localJSON("docentes", []);
@@ -1020,7 +1020,7 @@
 
     const curso = normalizeCourseName(sessionStorage.getItem("docenteCurso") || "");
     const materias = sessionJSON("docenteMaterias", [sessionStorage.getItem("docenteMateria")].filter(Boolean));
-    return curso && Array.isArray(materias) && materias.length ? [{ curso, materias }] : [];
+    return curso ? [{ curso, materias: Array.isArray(materias) ? materias : [] }] : [];
   }
 
   function uniqueCoursesFromAssignments(assignments) {

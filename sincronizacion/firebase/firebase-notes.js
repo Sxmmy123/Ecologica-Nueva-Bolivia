@@ -1,4 +1,4 @@
-// Modulo extraido de firebase-sync.js. Mantiene la misma logica, pero aislada por area.
+﻿// Modulo extraido de firebase-sync.js. Mantiene la misma logica, pero aislada por area.
 (function () {
   "use strict";
 

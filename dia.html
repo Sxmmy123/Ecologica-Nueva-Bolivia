@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -308,18 +308,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.21"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.23"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.21"></script>
+  <script defer src="pwa.js?v=v2.23"></script>
 </head>
 <body>
 <script>
@@ -991,12 +991,12 @@
       return docente.asignaciones.map(asig => ({
         curso: normalizarCurso(asig.curso),
         materias: Array.isArray(asig.materias) ? asig.materias : []
-      })).filter(asig => asig.curso && asig.materias.length);
+      })).filter(asig => asig.curso);
     }
     const materias = Array.isArray(docente?.materias) && docente.materias.length
       ? docente.materias
       : [docente?.materia].filter(Boolean);
-    return docente?.curso && materias.length ? [{ curso: normalizarCurso(docente.curso), materias }] : [];
+    return docente?.curso ? [{ curso: normalizarCurso(docente.curso), materias }] : [];
   }
 
   function guardarSesionDocenteDesdeCuenta(docente) {
@@ -1093,7 +1093,7 @@
     let cursos = cursosOficialesVisibles(alumnosPorCurso);
     if (esDocente()) {
       const permitidos = cursosDocenteAsignados();
-      const filtrados = cursos.filter(curso => permitidos.includes(curso));
+      const filtrados = cursos.filter(curso => permitidos.includes(normalizarCurso(curso)));
       cursos = filtrados.length ? filtrados : permitidos;
     }
     cursoVistaActual = normalizarCurso(cursoVistaActual);
@@ -1413,6 +1413,6 @@
     }
   });
 </script>
-<script src="exportar.js?v=v2.21"></script>
+<script src="exportar.js?v=v2.23"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Storage general: claves sincronizables, colecciones y agrupacion por curso.
+﻿// Storage general: claves sincronizables, colecciones y agrupacion por curso.
 (function () {
   "use strict";
 

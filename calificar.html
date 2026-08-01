@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -25,18 +25,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.21"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.23"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.21"></script>
+  <script defer src="pwa.js?v=v2.23"></script>
 </head>
 <body>
   <script>
@@ -233,8 +233,14 @@
       return asistencias[`${fecha}|${curso}|${nombre}`] || "";
     }
 
-    function estaPresente(nombre) {
-      return ["verde", "amarillo", "morado"].includes(estadoAsistencia(nombre));
+    function estaHabilitadoParaCalificar(nombre) {
+      return ["verde", "amarillo"].includes(estadoAsistencia(nombre));
+    }
+
+    function detalleNoCalificable(nombre) {
+      const estado = estadoAsistencia(nombre);
+      if (estado === "morado") return `${escapar(nombre)} <span class="badge text-bg-secondary">Permiso</span>`;
+      return `${escapar(nombre)} <span class="badge text-bg-danger">Falta</span>`;
     }
 
     async function cargarAsistenciaParaCalificar() {
@@ -310,8 +316,8 @@
 
     function prepararAlumnos() {
       const alumnos = nombresAlumnosCurso(curso);
-      alumnosPresentes = alumnos.filter(estaPresente);
-      alumnosAusentes = alumnos.filter(nombre => !estaPresente(nombre));
+      alumnosPresentes = alumnos.filter(estaHabilitadoParaCalificar);
+      alumnosAusentes = alumnos.filter(nombre => !estaHabilitadoParaCalificar(nombre));
     }
 
     function dibujarAusentes() {
@@ -326,11 +332,11 @@
       aviso.classList.remove("d-none");
       aviso.innerHTML = `
         <div class="ausentes-toggle fw-bold" data-bs-toggle="collapse" data-bs-target="#listaAusentes">
-          ${alumnosAusentes.length} alumno(s) ausente(s). Clic para ver.
+          ${alumnosAusentes.length} alumno(s) sin calificacion del dia. Clic para ver.
         </div>
         <div class="collapse mt-2" id="listaAusentes">
           <ul class="mb-0">
-            ${alumnosAusentes.map(nombre => `<li>${escapar(nombre)}</li>`).join("")}
+            ${alumnosAusentes.map(nombre => `<li>${detalleNoCalificable(nombre)}</li>`).join("")}
           </ul>
         </div>
       `;
@@ -343,7 +349,7 @@
       dibujarAusentes();
 
       if (!alumnosPresentes.length) {
-        tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay alumnos con asistencia registrada para calificar.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay alumnos presentes o con atraso para calificar.</td></tr>';
         return;
       }
 
@@ -446,7 +452,6 @@
   </script>
 </body>
 </html>
-
 
 
 

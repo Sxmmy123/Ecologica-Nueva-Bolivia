@@ -1,4 +1,4 @@
-// Roles y permisos de escritura para la sincronizacion Firebase.
+﻿// Roles y permisos de escritura para la sincronizacion Firebase.
 (function () {
   "use strict";
 

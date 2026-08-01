@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -183,19 +183,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.21"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.21"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.23"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <meta name="apple-mobile-web-app-title" content="U.E. Ecologica N. B.">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.21"></script>
+  <script defer src="pwa.js?v=v2.23"></script>
 </head>
 <body>
   <button class="cache-maintenance" type="button" onclick="abrirModalLimpiezaTotal()" title="Limpieza de cache" aria-label="Limpieza de cache">
@@ -219,7 +219,7 @@
       <div id="mensaje" class="alert alert-danger py-2 d-none">Usuario o contrasena incorrectos.</div>
       <button class="btn btn-primary btn-login w-100" type="submit">Ingresar</button>
     </form>
-    <p class="app-version">Version v2.21</p>
+    <p class="app-version">Version v2.23</p>
   </main>
 
   <div id="modalLimpiezaLocal" class="cleanup-modal" role="dialog" aria-modal="true" aria-labelledby="tituloLimpiezaLocal">
@@ -336,6 +336,19 @@
       localStorage.setItem("alumnosAccesoOffline", JSON.stringify(accesos));
     }
 
+    function normalizarCurso(nombre) {
+      const texto = String(nombre || "")
+        .replaceAll("\u00c2\u00ba", "º")
+        .replaceAll("\u00e2\u20ac\u201c", "-")
+        .replaceAll("–", "-")
+        .replace(/\s+/g, " ")
+        .trim();
+      const primaria = texto.match(/^([1-6])\.\s*(?:º|o)?\s*de\s*Primaria$/i);
+      if (primaria) return `${primaria[1]}.º de Primaria`;
+      if (/^pre\s*inicial\s*-\s*inicial$/i.test(texto)) return "Pre Inicial - Inicial";
+      return texto;
+    }
+
     function ingresarAlumno(curso, nombre) {
       sessionStorage.setItem("sesionRol", "alumno");
       sessionStorage.setItem("sesionAlumno", "activa");
@@ -432,11 +445,14 @@
       const docente = docenteCuenta;
       if (docente) {
         const asignaciones = Array.isArray(docente.asignaciones) && docente.asignaciones.length
-          ? docente.asignaciones
+          ? docente.asignaciones.map(asig => ({
+              curso: normalizarCurso(asig.curso),
+              materias: Array.isArray(asig.materias) ? asig.materias : []
+            })).filter(asig => asig.curso)
           : [{
-              curso: docente.curso,
+              curso: normalizarCurso(docente.curso),
               materias: docente.materias && docente.materias.length ? docente.materias : [docente.materia].filter(Boolean)
-            }].filter(asig => asig.curso && asig.materias.length);
+            }].filter(asig => asig.curso);
         const cursosDocente = [...new Set(asignaciones.map(asig => asig.curso))];
         const materiasDocente = asignaciones[0]?.materias || [];
         sessionStorage.setItem("sesionRol", "docente");

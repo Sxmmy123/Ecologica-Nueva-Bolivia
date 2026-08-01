@@ -1,4 +1,4 @@
-// Configuracion e inicializacion base de Firebase.
+﻿// Configuracion e inicializacion base de Firebase.
 // Este archivo debe cargarse antes de los demas archivos de sincronizacion.
 (function () {
   "use strict";
@@ -24,6 +24,6 @@
   
 
   window.FirebaseSchoolSync = window.FirebaseSchoolSync || {};
-  window.FirebaseSchoolSync.version = "v2.21";
+  window.FirebaseSchoolSync.version = "v2.23";
   window.FirebaseSchoolSync.databaseRoot = "sistemaEscolar";
 })();

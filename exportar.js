@@ -1,4 +1,4 @@
-// Funciones de impresion y exportacion de asistencia.
+﻿// Funciones de impresion y exportacion de asistencia.
 // Separadas de dia.html para mantener la pagina estable y facil de mantener.
 
 function nombreArchivoSeguro(texto) {
