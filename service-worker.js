@@ -1,8 +1,8 @@
 ﻿const CACHE_PREFIX = "nueva-bolivia-pwa-";
-const CACHE_NAME = "nueva-bolivia-pwa-v2.24";
+const CACHE_NAME = "nueva-bolivia-pwa-v2.25";
 
 const CORE_ASSETS = [
-  './exportar.js?v=v2.24',
+  './exportar.js?v=v2.25',
   "./",
   "./index.html",
   "./admin.html",
@@ -13,14 +13,14 @@ const CORE_ASSETS = [
   "./notas.html",
   "./alumno.html",
   "./reportes.html",
-  "./sincronizacion/firebase/firebase-core.js?v=v2.24",
-  "./sincronizacion/firebase/firebase-roles.js?v=v2.24",
-  "./sincronizacion/firebase/firebase-storage.js?v=v2.24",
-  "./sincronizacion/firebase/firebase-attendance.js?v=v2.24",
-  "./sincronizacion/firebase/firebase-notes.js?v=v2.24",
-  "./sincronizacion/firebase/firebase-stats.js?v=v2.24",
-  "./sincronizacion/firebase/firebase-sync.js?v=v2.24",
-  "./pwa.js?v=v2.24",
+  "./sincronizacion/firebase/firebase-core.js?v=v2.25",
+  "./sincronizacion/firebase/firebase-roles.js?v=v2.25",
+  "./sincronizacion/firebase/firebase-storage.js?v=v2.25",
+  "./sincronizacion/firebase/firebase-attendance.js?v=v2.25",
+  "./sincronizacion/firebase/firebase-notes.js?v=v2.25",
+  "./sincronizacion/firebase/firebase-stats.js?v=v2.25",
+  "./sincronizacion/firebase/firebase-sync.js?v=v2.25",
+  "./pwa.js?v=v2.25",
   "./manifest.json",
   "./limpiar-cache.html",
   "./images/login-fondo.png",
