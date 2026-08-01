@@ -76,18 +76,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.18"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.13"></script>
+  <script defer src="pwa.js?v=v2.18"></script>
 </head>
 <body>
 <script>
@@ -166,6 +166,9 @@
     <button class="btn btn-danger hidden fw-bold" id="btnEliminarFila"><i class="bi bi-trash3-fill"></i> Eliminar última hora</button>
     <button class="btn btn-primary hidden fw-bold" id="btnGuardar"><i class="bi bi-save-fill"></i> Guardar cambios</button>
     <button class="btn btn-outline-secondary hidden fw-bold" id="btnNoGuardar"><i class="bi bi-x-circle"></i> No guardar</button>
+    <button class="btn btn-outline-success fw-bold" id="btnExportarHorario"><i class="bi bi-download"></i> Exportar horario</button>
+    <button class="btn btn-outline-primary fw-bold" id="btnImportarHorario"><i class="bi bi-upload"></i> Importar horario</button>
+    <input type="file" id="archivoHorarioBackup" class="d-none" accept="application/json,.json">
   </div>
 </main>
 
@@ -329,6 +332,9 @@
   const btnEliminarFila = document.getElementById("btnEliminarFila");
   const btnGuardar = document.getElementById("btnGuardar");
   const btnNoGuardar = document.getElementById("btnNoGuardar");
+  const btnExportarHorario = document.getElementById("btnExportarHorario");
+  const btnImportarHorario = document.getElementById("btnImportarHorario");
+  const archivoHorarioBackup = document.getElementById("archivoHorarioBackup");
 
   function leerJSON(clave, inicial = {}) {
     try { return JSON.parse(localStorage.getItem(clave) || JSON.stringify(inicial)); }
@@ -784,6 +790,122 @@
     return directo;
   }
 
+  function esClaveBackupHorario(clave) {
+    return clave === "horasPrimaria" ||
+      clave.startsWith("horario_") ||
+      clave.startsWith("materias_") ||
+      clave.startsWith("materiasPersonalizadas_") ||
+      clave.startsWith("materiaColores_") ||
+      clave.startsWith("materiasModo_") ||
+      clave.startsWith("horarioDocente_");
+  }
+
+  function clavesBackupHorario() {
+    const claves = new Set(["horasPrimaria"]);
+    CURSOS_DEFAULT.forEach(nombreCurso => {
+      claves.add(`horario_${nombreCurso}`);
+      claves.add(`materias_${nombreCurso}`);
+      claves.add(`materiasPersonalizadas_${nombreCurso}`);
+      claves.add(`materiaColores_${nombreCurso}`);
+      claves.add(`materiasModo_${nombreCurso}`);
+    });
+    for (let i = 0; i < localStorage.length; i++) {
+      const clave = localStorage.key(i);
+      if (clave && esClaveBackupHorario(clave)) claves.add(clave);
+    }
+    return [...claves].filter(clave => localStorage.getItem(clave) !== null);
+  }
+
+  function descargarArchivoJSON(nombre, datos) {
+    const blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportarHorarioBackup() {
+    guardarValoresTabla();
+    if (modoEdicion) {
+      guardarJSON(`horario_${curso}`, horario);
+      guardarMaterias();
+    }
+    const datos = {};
+    clavesBackupHorario().forEach(clave => {
+      const valor = localStorage.getItem(clave);
+      if (valor !== null) {
+        try { datos[clave] = JSON.parse(valor); }
+        catch (error) { datos[clave] = valor; }
+      }
+    });
+    const respaldo = {
+      tipo: "respaldo-horario",
+      version: "1.0",
+      exportado: new Date().toISOString(),
+      cursoActual: curso,
+      datos
+    };
+    const fecha = new Date().toISOString().slice(0, 10);
+    descargarArchivoJSON(`respaldo-horario-${fecha}.json`, respaldo);
+  }
+
+  async function subirClavesHorarioImportadas(claves) {
+    if (!navigator.onLine || sessionStorage.getItem("sesionRol") !== "admin") return false;
+    const directo = await guardarHorarioDirectoRealtime(claves).catch(error => {
+      console.error("No se pudo subir el respaldo de horario", error);
+      return false;
+    });
+    if (typeof window.firebaseMarkPackage === "function") {
+      await Promise.allSettled(claves.map(clave => window.firebaseMarkPackage(clave)));
+      if (typeof window.firebaseSyncNow === "function") await window.firebaseSyncNow();
+    }
+    return directo;
+  }
+
+  async function importarHorarioBackup(archivo) {
+    if (!archivo) return;
+    const texto = await archivo.text();
+    let respaldo;
+    try { respaldo = JSON.parse(texto); }
+    catch (error) {
+      alert("El archivo no es un respaldo valido de horario.");
+      return;
+    }
+    if (!respaldo || respaldo.tipo !== "respaldo-horario" || !respaldo.datos || typeof respaldo.datos !== "object") {
+      alert("El archivo no corresponde a un respaldo de horario.");
+      return;
+    }
+    const claves = Object.keys(respaldo.datos).filter(esClaveBackupHorario);
+    if (!claves.length) {
+      alert("El respaldo no contiene horarios para importar.");
+      return;
+    }
+    if (!confirm(`Se restauraran ${claves.length} registros de horario. ?Desea continuar?`)) return;
+
+    claves.forEach(clave => {
+      const valor = respaldo.datos[clave];
+      localStorage.setItem(clave, typeof valor === "string" ? valor : JSON.stringify(valor));
+    });
+
+    horario = leerJSON(`horario_${curso}`, plantillaHorario(curso));
+    materiasSeleccionadas = leerJSON(`materias_${curso}`, []);
+    materiasPersonalizadas = leerJSON(`materiasPersonalizadas_${curso}`, []);
+    materiaColores = leerJSON(`materiaColores_${curso}`, {});
+    modoMaterias = localStorage.getItem(`materiasModo_${curso}`) || "defecto";
+    asegurarFilasIniciales();
+    normalizarMateriasGuardadas();
+    recalcularHorariosDocentes();
+    renderMaterias();
+    generarTabla();
+
+    const subido = await subirClavesHorarioImportadas(claves);
+    alert(subido ? "Horario importado y guardado en Firebase." : "Horario importado en este dispositivo. Para subirlo a Firebase, ingresa como admin con internet y guarda cambios.");
+  }
+
   function materiasDisponiblesActuales() {
     if (modoMaterias === "propio") return [...new Set(materiasPersonalizadas)];
     return [...new Set([...materiasDisponibles, ...materiasPersonalizadas])];
@@ -1030,6 +1152,13 @@
     generarTabla();
   });
 
+  btnExportarHorario.addEventListener("click", exportarHorarioBackup);
+  btnImportarHorario.addEventListener("click", () => archivoHorarioBackup.click());
+  archivoHorarioBackup.addEventListener("change", async () => {
+    await importarHorarioBackup(archivoHorarioBackup.files[0]);
+    archivoHorarioBackup.value = "";
+  });
+
   btnEliminarFila.addEventListener("click", () => {
     guardarValoresTabla();
     if (horario.length > 0) horario.pop();
@@ -1075,6 +1204,23 @@
     }
     cerrarEdicion();
   });
+
+    window.firebaseAfterDataUpdated = function () {
+    if (modoEdicion) return;
+    horario = leerJSON(`horario_${curso}`, plantillaHorario(curso));
+    materiasSeleccionadas = leerJSON(`materias_${curso}`, []);
+    materiasPersonalizadas = leerJSON(`materiasPersonalizadas_${curso}`, []);
+    materiaColores = leerJSON(`materiaColores_${curso}`, {});
+    modoMaterias = localStorage.getItem(`materiasModo_${curso}`) || "defecto";
+    asegurarFilasIniciales();
+    normalizarMateriasGuardadas();
+    renderNavbar();
+    renderCursos();
+    renderMaterias();
+    generarTabla();
+  };
+
+
 
   asegurarCursosDefault();
   asegurarFilasIniciales();

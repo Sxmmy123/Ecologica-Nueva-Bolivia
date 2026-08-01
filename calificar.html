@@ -25,18 +25,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.18"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.13"></script>
+  <script defer src="pwa.js?v=v2.18"></script>
 </head>
 <body>
   <script>
@@ -247,6 +247,7 @@
     }
 
     async function abrirActividad(actividadElegida) {
+      if (sessionStorage.getItem("sesionRol") === "docente" && !window.requireInternetForFirebase("Conecte a internet para calificar actividades.")) return;
       actividad = actividadElegida;
       alumno = "";
       nota = null;
@@ -280,6 +281,7 @@
     }
 
     function eliminarActividadActual() {
+      if (sessionStorage.getItem("sesionRol") === "docente" && !window.requireInternetForFirebase("Conecte a internet para eliminar actividades.")) return;
       if (!actividad) return;
       const detalle = `${actividad.tipo || "Actividad"}: ${actividad.titulo || "Sin titulo"}\nMateria: ${actividad.materia || "-"}\nFecha: ${fecha}\nTrimestre: ${trimestre}`;
       if (!confirm(`Esta seguro que desea eliminar esta actividad?\n\n${detalle}`)) return;
@@ -307,7 +309,7 @@
     }
 
     function prepararAlumnos() {
-      const alumnos = leerJSON("alumnos")[curso] || [];
+      const alumnos = nombresAlumnosCurso(curso);
       alumnosPresentes = alumnos.filter(estaPresente);
       alumnosAusentes = alumnos.filter(nombre => !estaPresente(nombre));
     }
@@ -393,6 +395,7 @@
     }
 
     function guardarNota(valor) {
+      if (sessionStorage.getItem("sesionRol") === "docente" && !window.requireInternetForFirebase("Conecte a internet para guardar calificaciones.")) return;
       const notas = leerJSON("notas");
 
       if (!notas[curso]) notas[curso] = {};
@@ -430,6 +433,14 @@
     function volver() {
       location.href = "mes.html";
     }
+
+    window.firebaseAfterDataUpdated = function () {
+      if (actividad) {
+        prepararAlumnos();
+        dibujarAlumnos();
+      }
+      dibujarMaterias();
+    };
 
     iniciar();
   </script>

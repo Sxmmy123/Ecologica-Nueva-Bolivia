@@ -308,18 +308,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.18"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.13"></script>
+  <script defer src="pwa.js?v=v2.18"></script>
 </head>
 <body>
 <script>
@@ -405,6 +405,65 @@
   let cursoVistaActual = localStorage.getItem("cursoSeleccionado") || "";
   let trimestrePanelAbierto = false;
   const edicionesAsistenciaSesion = new Set();
+
+  function guardarLocalAsistencia(clave, valor) {
+    const texto = JSON.stringify(valor);
+    if (typeof window.firebaseSetLocalOnly === "function") window.firebaseSetLocalOnly(clave, texto);
+    else localStorage.setItem(clave, texto);
+  }
+
+  async function confirmarAsistenciaAlumnoPendiente(silencioso = false) {
+    if (!asistenciaAlumnoPendiente) return true;
+    if (guardandoAsistenciaPendiente) return false;
+    if (docenteSinInternet()) {
+      if (!silencioso) mostrarBloqueoAsistenciaSinInternet();
+      return false;
+    }
+    if (typeof window.firebaseSaveAttendanceStudent !== "function") {
+      if (!silencioso) alert("No se encontro la conexion de guardado de asistencia.");
+      return false;
+    }
+
+    guardandoAsistenciaPendiente = true;
+    const pendiente = { ...asistenciaAlumnoPendiente };
+    try {
+      const guardado = await window.firebaseSaveAttendanceStudent({
+        fecha: pendiente.fecha,
+        curso: pendiente.curso,
+        alumno: pendiente.alumno,
+        estado: pendiente.estado,
+        trimestre: pendiente.trimestre
+      });
+      if (guardado) {
+        asistenciaAlumnoPendiente = null;
+        return true;
+      }
+      if (!silencioso) alert("No se pudo guardar la asistencia en Firebase. Revise la conexion e intente nuevamente.");
+      return false;
+    } catch (error) {
+      console.error("No se pudo confirmar asistencia", error);
+      if (!silencioso) alert("No se pudo guardar la asistencia en Firebase. Revise la conexion e intente nuevamente.");
+      return false;
+    } finally {
+      guardandoAsistenciaPendiente = false;
+    }
+  }
+
+  function habilitarEdicionAsistencia() {
+    if (docenteSinInternet()) {
+      mostrarBloqueoAsistenciaSinInternet();
+      return;
+    }
+    const mensaje = "Se habilitara la correccion de asistencia y quedara registrada con su usuario. ?Desea continuar?";
+    if (!confirm(mensaje)) return;
+    mostrarInformacion(true);
+  }
+
+  async function terminarEdicionAsistencia() {
+    const guardado = await confirmarAsistenciaAlumnoPendiente(false);
+    if (!guardado) return;
+    mostrarInformacion(false);
+  }
 
   function claveDeFecha() {
     return `${anio}-${mes.toString().padStart(2, "0")}-${dia.toString().padStart(2, "0")}`;
@@ -565,7 +624,8 @@
       usuario: docenteActualUsuario(),
       hora: new Date().toLocaleString("es-BO")
     });
-    localStorage.setItem("asistenciaEdiciones", JSON.stringify(historial));
+    guardarLocalAsistencia("asistenciaEdiciones", historial);
+    if (typeof window.firebaseMarkPackage === "function") window.firebaseMarkPackage("asistenciaEdiciones").catch(() => {});
   }
 
   function renderHistorialEdicionAsistencia(curso) {
@@ -1240,7 +1300,6 @@
                  asistenciaAlumnoPendiente.alumno !== nombre);
 
               if (pendienteEsOtroAlumno) {
-                asistenciaAlumnoPendiente.enEdicion = false;
                 const guardadoAnterior = await confirmarAsistenciaAlumnoPendiente(true);
                 if (!guardadoAnterior) {
                   alert("No se pudo guardar la asistencia anterior en Firebase. Revise la conexion e intente nuevamente.");
@@ -1277,17 +1336,17 @@
       detalleContainer.appendChild(div);
     });
 
-    if (!esVistaSoloLectura() && !modoEdicion && (!esHoy || asistenciaBloqueadaPorHorario(cursoVistaActual))) {
+    if (!esVistaSoloLectura() && modoEdicion) {
+      const btnTerminar = document.createElement("button");
+      btnTerminar.className = "btn btn-sm btn-success mt-3 me-2";
+      btnTerminar.innerHTML = '<i class="bi bi-check2-circle"></i> Terminar edicion';
+      btnTerminar.onclick = terminarEdicionAsistencia;
+      detalleContainer.appendChild(btnTerminar);
+    } else if (!esVistaSoloLectura() && (!esHoy || asistenciaBloqueadaPorHorario(cursoVistaActual))) {
       const btnEditar = document.createElement("button");
       btnEditar.className = "btn btn-sm btn-warning mt-3";
-      btnEditar.textContent = "Editar asistencia";
-      btnEditar.onclick = () => {
-        if (docenteSinInternet()) {
-          mostrarBloqueoAsistenciaSinInternet();
-          return;
-        }
-        mostrarInformacion(true);
-      };
+      btnEditar.innerHTML = '<i class="bi bi-pencil-square"></i> Editar asistencia';
+      btnEditar.onclick = habilitarEdicionAsistencia;
       detalleContainer.appendChild(btnEditar);
     }
   }
@@ -1309,6 +1368,16 @@
     }
   });
 
+    window.firebaseAfterDataUpdated = function () {
+    if (asistenciaAlumnoPendiente) return;
+    renderNavbar();
+    renderTrimestrePanel();
+    if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
+    else mostrarInformacion();
+  };
+
+
+
   renderNavbar();
   renderTrimestrePanel();
   if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
@@ -1325,6 +1394,6 @@
     }
   });
 </script>
-<script src="exportar.js?v=v2.13"></script>
+<script src="exportar.js?v=v2.18"></script>
 </body>
 </html>

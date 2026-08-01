@@ -1449,21 +1449,13 @@
     return path.endsWith("/index.html") || path.endsWith("\\index.html") || path === "/" || path === "";
   }
 
-  function reloadPageOnceAfterPull() {
-    if (isLoginPage()) return;
-    const key = "__firebaseInitialReloaded:v3:" + location.pathname;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-    setTimeout(() => location.reload(), 150);
-  }
-
   function notifyDataUpdated(allowReload = false) {
     window.dispatchEvent(new CustomEvent("firebaseDataUpdated"));
     if (typeof window.firebaseAfterDataUpdated === "function") {
       try { window.firebaseAfterDataUpdated(); }
       catch (error) { console.info("No se pudo actualizar la vista tras Firebase:", error.message); }
     }
-    if (allowReload) reloadPageOnceAfterPull();
+    // Las vistas se actualizan con firebaseAfterDataUpdated, sin recargar la pagina.
   }
 
   function scheduleSync(delay = null) {

@@ -183,19 +183,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.13"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.13"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.18"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.18"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <meta name="apple-mobile-web-app-title" content="U.E. Ecologica N. B.">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.13"></script>
+  <script defer src="pwa.js?v=v2.18"></script>
 </head>
 <body>
   <button class="cache-maintenance" type="button" onclick="abrirModalLimpiezaTotal()" title="Limpieza de cache" aria-label="Limpieza de cache">
@@ -216,10 +216,10 @@
         <label for="clave" class="form-label">Contrase?a</label>
         <input id="clave" class="form-control form-control-lg" type="password" autocomplete="current-password" required>
       </div>
-      <div id="mensaje" class="alert alert-danger py-2 d-none">Usuario o contrase?a incorrectos.</div>
+      <div id="mensaje" class="alert alert-danger py-2 d-none">Usuario o contrasena incorrectos.</div>
       <button class="btn btn-primary btn-login w-100" type="submit">Ingresar</button>
     </form>
-    <p class="app-version">Versi?n v2.13</p>
+    <p class="app-version">Version v2.18</p>
   </main>
 
   <div id="modalLimpiezaLocal" class="cleanup-modal" role="dialog" aria-modal="true" aria-labelledby="tituloLimpiezaLocal">
@@ -390,7 +390,7 @@
       window.location.href = "admin.html";
     } else if (sessionStorage.getItem("sesionRol") === "director") {
       window.location.href = "dia.html";
-    } else if (sessionStorage.getItem("sesionDocente") === "activa") {
+    } else if (sessionStorage.getItem("sesionRol") === "docente" && sessionStorage.getItem("docenteUsuario")) {
       window.location.href = "mes.html";
     } else if (sessionStorage.getItem("sesionAlumno") === "activa") {
       const curso = sessionStorage.getItem("alumnoCurso") || "";
@@ -409,6 +409,10 @@
       const clave = document.getElementById("clave").value;
 
       if (await ingresarAdminConFirebase(usuario, clave)) return;
+
+      if (navigator.onLine && typeof window.firebaseAfterLogin === "function") {
+        await window.firebaseAfterLogin().catch(error => console.info("Firebase login preload:", error.message));
+      }
 
       const director = leerJSON("director", null);
       if (director && usuario === director.usuario && clave === director.clave) {
@@ -477,7 +481,7 @@
         return;
       }
 
-      mostrarMensaje("Usuario o contrase?a incorrectos.");
+      mostrarMensaje("Usuario o contrasena incorrectos.");
     });
   </script>
 </body>
