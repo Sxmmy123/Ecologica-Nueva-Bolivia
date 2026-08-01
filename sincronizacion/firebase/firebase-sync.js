@@ -103,12 +103,12 @@
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
       .replace(/pre\s*inicial\s*[-–]\s*inicial/g, "pre_inicial_inicial")
-      .replace(/1\s*\.?\s*º?\s*de\s*primaria/g, "1_primaria")
-      .replace(/2\s*\.?\s*º?\s*de\s*primaria/g, "2_primaria")
-      .replace(/3\s*\.?\s*º?\s*de\s*primaria/g, "3_primaria")
-      .replace(/4\s*\.?\s*º?\s*de\s*primaria/g, "4_primaria")
-      .replace(/5\s*\.?\s*º?\s*de\s*primaria/g, "5_primaria")
-      .replace(/6\s*\.?\s*º?\s*de\s*primaria/g, "6_primaria")
+      .replace(/1\s*\.?\s*[º°]?\s*de\s*primaria/g, "1_primaria")
+      .replace(/2\s*\.?\s*[º°]?\s*de\s*primaria/g, "2_primaria")
+      .replace(/3\s*\.?\s*[º°]?\s*de\s*primaria/g, "3_primaria")
+      .replace(/4\s*\.?\s*[º°]?\s*de\s*primaria/g, "4_primaria")
+      .replace(/5\s*\.?\s*[º°]?\s*de\s*primaria/g, "5_primaria")
+      .replace(/6\s*\.?\s*[º°]?\s*de\s*primaria/g, "6_primaria")
       .replace(/primero\s*["']?a["']?/g, "1_primaria")
       .replace(/segundo\s*["']?a["']?/g, "2_primaria")
       .replace(/tercero\s*["']?a["']?/g, "3_primaria")
@@ -216,11 +216,12 @@
     const text = String(value || "")
       .replaceAll("\u00c2\u00ba", "\u00ba")
       .replaceAll("\u00ba", "\u00ba")
+      .replaceAll("\u00b0", "\u00ba")
       .replaceAll("\u00e2\u20ac\u201c", "-")
       .replaceAll("\u2013", "-")
       .replace(/\s+/g, " ")
       .trim();
-    const primaria = text.match(/^([1-6])\.\s*(?:\u00ba|o)?\s*de\s*Primaria$/i);
+    const primaria = text.match(/^([1-6])\.?\s*(?:\u00ba|\u00b0|o)?\s*de\s*Primaria$/i);
     if (primaria) return `${primaria[1]}.\u00ba de Primaria`;
     if (/^pre\s*inicial\s*-\s*inicial$/i.test(text)) return "Pre Inicial - Inicial";
     return text;
@@ -1268,7 +1269,7 @@
       detailDocs.forEach(({ data }) => {
         if (!courseAllowed(scope, data.course)) return;
         if (scope?.studentName && data.alumno !== scope.studentName) return;
-        const entryKey = data.entryKey || [data.fecha, data.course, data.alumno].join("|");
+        const entryKey = [data.fecha, normalizeCourseName(data.course), data.alumno].join("|");
         obj[entryKey] = data.value || "blanco";
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
       });
@@ -1278,7 +1279,7 @@
       const detailDocs = await readCollectionByCourse("asistencia_ediciones_detalle", scope?.courses || null);
       detailDocs.forEach(({ data }) => {
         if (!courseAllowed(scope, data.course)) return;
-        const entryKey = data.entryKey || [data.fecha, data.course].join("|");
+        const entryKey = [data.fecha, normalizeCourseName(data.course), data.alumno].filter(Boolean).join("|");
         obj[entryKey] = parseStoredValue(data.value, []);
         updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
       });
@@ -1641,7 +1642,6 @@
       if (!student) return;
       const remoteValue = row.value || row.estado || "blanco";
       const keys = [
-        row.entryKey,
         [row.fecha, course, student].join("|"),
         [row.fecha, courseLabel, student].join("|")
       ].filter(Boolean);
