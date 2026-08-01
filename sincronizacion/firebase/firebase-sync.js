@@ -1494,12 +1494,12 @@
       return docente.asignaciones.map(asig => ({
         curso: normalizeCourseName(asig.curso),
         materias: Array.isArray(asig.materias) ? [...new Set(asig.materias.filter(Boolean))] : []
-      })).filter(asig => asig.curso && asig.materias.length);
+      })).filter(asig => asig.curso);
     }
     const materias = Array.isArray(docente?.materias) && docente.materias.length
       ? docente.materias
       : [docente?.materia].filter(Boolean);
-    return docente?.curso && materias.length ? [{ curso: normalizeCourseName(docente.curso), materias }] : [];
+    return docente?.curso ? [{ curso: normalizeCourseName(docente.curso), materias }] : [];
   }
 
   function buildTeacherSchedule(docente) {
@@ -1647,7 +1647,7 @@
       ].filter(Boolean);
 
       [...new Set(keys)].forEach(entryKey => {
-        if (!current[entryKey] || current[entryKey] === "blanco") {
+        if (current[entryKey] !== remoteValue) {
           current[entryKey] = remoteValue;
           changed = true;
         }

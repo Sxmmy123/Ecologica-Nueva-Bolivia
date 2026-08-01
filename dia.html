@@ -308,18 +308,18 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-  <script src="sincronizacion/firebase/firebase-core.js?v=v2.23"></script>
-  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.23"></script>
-  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.23"></script>
-  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.23"></script>
-  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.23"></script>
-  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.23"></script>
-  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.23"></script>
+  <script src="sincronizacion/firebase/firebase-core.js?v=v2.24"></script>
+  <script src="sincronizacion/firebase/firebase-roles.js?v=v2.24"></script>
+  <script src="sincronizacion/firebase/firebase-storage.js?v=v2.24"></script>
+  <script src="sincronizacion/firebase/firebase-attendance.js?v=v2.24"></script>
+  <script src="sincronizacion/firebase/firebase-notes.js?v=v2.24"></script>
+  <script src="sincronizacion/firebase/firebase-stats.js?v=v2.24"></script>
+  <script src="sincronizacion/firebase/firebase-sync.js?v=v2.24"></script>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#12355b">
   <link rel="icon" type="image/png" sizes="192x192" href="images/icon-192.png">
   <link rel="apple-touch-icon" href="images/icon-180.png">
-  <script defer src="pwa.js?v=v2.23"></script>
+  <script defer src="pwa.js?v=v2.24"></script>
 </head>
 <body>
 <script>
@@ -1220,7 +1220,7 @@
     setTimeout(() => cambiarDia(delta), 400);
   }
 
-  function mostrarInformacion(modoEdicion = false) {
+  async function mostrarInformacion(modoEdicion = false) {
     modoEdicion = Boolean(modoEdicion || modoEdicionAsistenciaActivo);
     actualizarClaseModoAsistencia();
     document.querySelectorAll("#slideContainer > .d-flex.justify-content-between.mb-3").forEach(el => el.style.display = "");
@@ -1238,7 +1238,6 @@
     detalleContainer.innerHTML = "";
 
     const alumnosPorCurso = JSON.parse(localStorage.getItem("alumnos")) || {};
-    const asistencias = JSON.parse(localStorage.getItem("asistencias")) || {};
     const coloresCursos = JSON.parse(localStorage.getItem("cursoColores")) || {};
     const colorCurso = curso => coloresCursos[curso] || "#12355b";
     let cursos = [...new Set(Object.keys(alumnosPorCurso).map(normalizarCurso))];
@@ -1256,6 +1255,12 @@
     cursoVistaActual = normalizarCurso(cursoVistaActual);
     if (!cursoVistaActual || !cursos.includes(cursoVistaActual)) cursoVistaActual = cursos[0];
     localStorage.setItem("cursoSeleccionado", cursoVistaActual);
+
+    if (navigator.onLine && typeof window.firebaseLoadAttendanceDay === "function") {
+      await window.firebaseLoadAttendanceDay({ fecha: claveDeFecha(), curso: cursoVistaActual });
+    }
+
+    const asistencias = JSON.parse(localStorage.getItem("asistencias")) || {};
     detalleContainer.innerHTML = `
       <div class="course-tabs-bar">
         ${cursos.map(curso => `<button class="course-tab ${curso === cursoVistaActual ? "active" : ""}" title="${curso}" style="${curso === cursoVistaActual ? `border-color:${colorCurso(curso)}; color:${colorCurso(curso)}; background:${colorCursoPastel(colorCurso(curso))};` : `border-color:${colorCurso(curso)};`}" onclick="seleccionarCursoResumen('${String(curso).replaceAll("\\", "\\\\").replaceAll("'", "\\'").replaceAll('"', "&quot;")}')">${etiquetaCursoCorta(curso)}</button>`).join("")}
@@ -1413,6 +1418,6 @@
     }
   });
 </script>
-<script src="exportar.js?v=v2.23"></script>
+<script src="exportar.js?v=v2.24"></script>
 </body>
 </html>

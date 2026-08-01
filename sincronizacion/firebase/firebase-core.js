@@ -24,6 +24,6 @@
   
 
   window.FirebaseSchoolSync = window.FirebaseSchoolSync || {};
-  window.FirebaseSchoolSync.version = "v2.23";
+  window.FirebaseSchoolSync.version = "v2.24";
   window.FirebaseSchoolSync.databaseRoot = "sistemaEscolar";
 })();
