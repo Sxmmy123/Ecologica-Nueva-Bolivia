@@ -660,6 +660,7 @@
     rawSetItem(key, value);
     if (!applyingRemote) {
       if (booting && document.readyState === "loading") return;
+      touchPackageMeta(key);
       enqueueChange(key, String(value), "set");
     }
   };
@@ -673,6 +674,7 @@
     rawRemoveItem(key);
     if (!applyingRemote) {
       if (booting && document.readyState === "loading") return;
+      touchPackageMeta(key);
       enqueueChange(key, null, "remove");
     }
   };
@@ -1422,7 +1424,7 @@
     rawRemoveItem(LOCAL_DIRTY_KEY);
     try {
       setStatus("descargando");
-      const force = true;
+      const force = isViewerRole();
       const legacyChanged = false;
       const structuredChanged = await pullStructured(force);
       const normalizedChanged = normalizeCourseStorage(!isViewerRole());
@@ -1615,6 +1617,7 @@
 
   window.firebaseSetLocalOnly = function (key, value) {
     rawSetItem(key, String(value));
+    touchPackageMeta(key);
   };
 
   window.firebaseLoadAttendanceDay = async function ({ fecha, curso }) {

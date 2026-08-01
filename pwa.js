@@ -1,9 +1,9 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "v2.18";
+  const APP_VERSION = "v2.21";
   const CACHE_PREFIX = "nueva-bolivia-pwa-";
-  const CURRENT_CACHE = "nueva-bolivia-pwa-v2.18";
+  const CURRENT_CACHE = "nueva-bolivia-pwa-v2.21";
   const CLEANUP_KEY = "__pwaCacheCleanupVersion";
   const isLocalFile = location.protocol === "file:";
 
@@ -26,7 +26,7 @@
     window.addEventListener("load", async () => {
       await cleanOldCachesOnce();
 
-      navigator.serviceWorker.register("./service-worker.js?v=v2.18", { updateViaCache: "none" })
+      navigator.serviceWorker.register("./service-worker.js?v=v2.21", { updateViaCache: "none" })
         .then(registration => {
           if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
           registration.addEventListener("updatefound", () => {
