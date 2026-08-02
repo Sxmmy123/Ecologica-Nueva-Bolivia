@@ -876,7 +876,7 @@
   async function writeDatabasePaths(updates) {
     const entries = Object.entries(updates || {}).filter(([path]) => path);
     if (!entries.length) return false;
-    await Promise.all(entries.map(([path, value]) => baseRef.child(path).set(value)));
+    await baseRef.update(Object.fromEntries(entries));
     return true;
   }
 
@@ -1790,7 +1790,12 @@
       };
     }
 
-    await writeDatabasePaths(updates);
+    try {
+      await writeDatabasePaths(updates);
+    } catch (error) {
+      setLastError(error, "guardando asistencia del dia");
+      throw error;
+    }
     setPackageMeta("asistencias", updatedAt, "synced");
     if (trimestre) setPackageMeta("trimestresAsistencia", updatedAt, "synced");
     await writeDirectorStatsForKey("asistencias", updatedAt).catch(error => setLastError(error, "actualizando estadisticas asistencia"));
@@ -1804,13 +1809,22 @@
     const course = normalizeCourseName(curso || "general");
     const student = String(alumno || "").trim();
     const state = estado || "blanco";
-    if (!fecha || !course || !student) return false;
-    if (!canWriteKey("asistencias")) return false;
+    if (!fecha || !course || !student) {
+      setLastError(new Error("Datos incompletos para guardar asistencia."), "guardando asistencia alumno");
+      return false;
+    }
+    if (!canWriteKey("asistencias")) {
+      setLastError(new Error(`El rol ${currentRole() || "sin rol"} no tiene permiso interno para guardar asistencia.`), "guardando asistencia alumno");
+      return false;
+    }
     if (!navigator.onLine) {
       notifyWriteBlocked("internet");
       return false;
     }
-    if (!baseRef && !(await initFirebase())) return false;
+    if (!baseRef && !(await initFirebase())) {
+      setLastError(new Error("Firebase no esta inicializado o falta databaseURL/configuracion."), "guardando asistencia alumno");
+      return false;
+    }
 
     const updatedAt = Date.now();
     const entryKey = [fecha, course, student].join("|");
@@ -1850,7 +1864,12 @@
       };
     }
 
-    await writeDatabasePaths(updates);
+    try {
+      await writeDatabasePaths(updates);
+    } catch (error) {
+      setLastError(error, "guardando asistencia alumno");
+      throw error;
+    }
     setPackageMeta("asistencias", updatedAt, "synced");
     if (trimestre) setPackageMeta("trimestresAsistencia", updatedAt, "synced");
     await writeDirectorStatsForKey("asistencias", updatedAt).catch(error => setLastError(error, "actualizando estadisticas asistencia alumno"));
