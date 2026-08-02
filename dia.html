@@ -407,6 +407,8 @@
   let cursoVistaActual = normalizarCurso(localStorage.getItem("cursoSeleccionado") || "");
   let trimestrePanelAbierto = false;
   let modoEdicionAsistenciaActivo = false;
+  let claveEscuchaAsistencia = "";
+  let detenerEscuchaAsistencia = null;
 
   function normalizarCurso(nombre) {
     const texto = String(nombre || "")
@@ -498,6 +500,23 @@
     if (!guardado) return;
     modoEdicionAsistenciaActivo = false;
     mostrarInformacion(false);
+  }
+
+  async function activarEscuchaAsistenciaTiempoReal() {
+    if (!navigator.onLine || typeof window.firebaseWatchAttendanceDay !== "function") return;
+    const clave = `${claveDeFecha()}|${cursoVistaActual}`;
+    if (claveEscuchaAsistencia === clave) return;
+    if (typeof detenerEscuchaAsistencia === "function") detenerEscuchaAsistencia();
+    detenerEscuchaAsistencia = null;
+    claveEscuchaAsistencia = clave;
+    detenerEscuchaAsistencia = await window.firebaseWatchAttendanceDay({
+      fecha: claveDeFecha(),
+      curso: cursoVistaActual,
+      onChange: () => {
+        if (asistenciaAlumnoPendiente) return;
+        mostrarInformacion(modoEdicionAsistenciaActivo, false);
+      }
+    });
   }
 
   function claveDeFecha() {
@@ -1290,6 +1309,7 @@
     if (refrescarFirebase && navigator.onLine && typeof window.firebaseLoadAttendanceDay === "function") {
       await window.firebaseLoadAttendanceDay({ fecha: claveDeFecha(), curso: cursoVistaActual });
     }
+    await activarEscuchaAsistenciaTiempoReal();
 
     const asistencias = JSON.parse(localStorage.getItem("asistencias")) || {};
     detalleContainer.innerHTML = `
@@ -1410,6 +1430,7 @@
   }
 
   window.addEventListener("pagehide", () => {
+    if (typeof detenerEscuchaAsistencia === "function") detenerEscuchaAsistencia();
     if (asistenciaAlumnoPendiente) {
       asistenciaAlumnoPendiente.enEdicion = false;
       confirmarAsistenciaAlumnoPendiente(true).catch(() => {});

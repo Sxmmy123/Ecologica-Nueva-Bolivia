@@ -880,6 +880,44 @@
     return true;
   }
 
+  function attendanceCourseNode(course) {
+    return rtdbKey(slug(normalizeCourseName(course || "general")));
+  }
+
+  function attendanceStudentNode(student) {
+    return rtdbKey(slug(String(student || "").trim() || "alumno"));
+  }
+
+  function attendanceRecordPath(course, fecha, student) {
+    return [
+      rtdbKey("asistencias_alumno"),
+      attendanceCourseNode(course),
+      rtdbKey(fecha),
+      attendanceStudentNode(student)
+    ].join("/");
+  }
+
+  function applyAttendanceRecordToLocal(current, row, courseLabel) {
+    if (!row) return false;
+    const fecha = row.fecha || "";
+    const course = normalizeCourseName(row.course || courseLabel || "general");
+    const student = String(row.alumno || "").trim();
+    if (!fecha || !course || !student) return false;
+    const remoteValue = row.value || row.estado || "blanco";
+    let changed = false;
+    const keys = [
+      [fecha, course, student].join("|"),
+      [fecha, String(courseLabel || course).trim(), student].join("|")
+    ].filter(Boolean);
+    [...new Set(keys)].forEach(entryKey => {
+      if (current[entryKey] !== remoteValue) {
+        current[entryKey] = remoteValue;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   async function writeItem(item) {
     const key = canonicalKey(item.key);
     if (!canWriteKey(key)) return;
@@ -1179,6 +1217,22 @@
     return rows;
   }
 
+  async function readNestedAttendanceDocuments(courses) {
+    const selectedCourses = Array.isArray(courses) && courses.length ? courses.map(normalizeCourseName) : DEFAULT_COURSES;
+    const rows = [];
+    for (const course of selectedCourses) {
+      const snapshot = await baseRef
+        .child(rtdbKey("asistencias_alumno"))
+        .child(attendanceCourseNode(course))
+        .once("value");
+      const fechas = snapshot.val() || {};
+      Object.values(fechas).forEach(alumnos => {
+        Object.values(alumnos || {}).forEach(data => rows.push({ id: data?.entryKey || "", data: data || {} }));
+      });
+    }
+    return rows;
+  }
+
   async function pullSingles(next, keys = null) {
     for (const [key, spec] of Object.entries(SINGLE_KEYS)) {
       if (keys && !keys.has(key)) continue;
@@ -1267,6 +1321,14 @@
     });
 
     if (key === "asistencias") {
+      const nestedDocs = await readNestedAttendanceDocuments(scope?.courses || null);
+      nestedDocs.forEach(({ data }) => {
+        if (!courseAllowed(scope, data.course)) return;
+        if (scope?.studentName && data.alumno !== scope.studentName) return;
+        const entryKey = [data.fecha, normalizeCourseName(data.course), data.alumno].join("|");
+        obj[entryKey] = data.value || "blanco";
+        updatedAt = Math.max(updatedAt, timestampToMillis(data.updatedAt), timestampToMillis(data.serverUpdatedAt));
+      });
       const detailDocs = scope?.studentName
         ? await readCollectionByStudent("asistencias_alumno", scope.studentName)
         : await readCollectionByCourse("asistencias_alumno", scope?.courses || null);
@@ -1621,35 +1683,59 @@
     if (!fecha || !course || !navigator.onLine) return false;
     if (!baseRef && !(await initFirebase())) return false;
 
+    const current = parseJSON(rawGetItem("asistencias"), {});
+    let changed = false;
+
+    const directSnapshot = await baseRef
+      .child(rtdbKey("asistencias_alumno"))
+      .child(attendanceCourseNode(course))
+      .child(rtdbKey(fecha))
+      .once("value");
+    const directData = directSnapshot.val() || {};
+    Object.values(directData).forEach(row => {
+      if (applyAttendanceRecordToLocal(current, row, courseLabel)) changed = true;
+    });
+
     const snapshot = await baseRef
       .child(rtdbKey("asistencias_alumno"))
       .orderByChild("fecha")
       .equalTo(fecha)
       .once("value");
     const data = snapshot.val() || {};
-    const current = parseJSON(rawGetItem("asistencias"), {});
-    let changed = false;
 
     Object.values(data).forEach(row => {
       if (!row || normalizeCourseName(row.course) !== course) return;
-      const student = String(row.alumno || "").trim();
-      if (!student) return;
-      const remoteValue = row.value || row.estado || "blanco";
-      const keys = [
-        [row.fecha, course, student].join("|"),
-        [row.fecha, courseLabel, student].join("|")
-      ].filter(Boolean);
-
-      [...new Set(keys)].forEach(entryKey => {
-        if (current[entryKey] !== remoteValue) {
-          current[entryKey] = remoteValue;
-          changed = true;
-        }
-      });
+      if (applyAttendanceRecordToLocal(current, row, courseLabel)) changed = true;
     });
 
     if (changed) rawSetItem("asistencias", stringify(current));
     return true;
+  };
+
+  window.firebaseWatchAttendanceDay = async function ({ fecha, curso, onChange }) {
+    const course = normalizeCourseName(curso || "general");
+    const courseLabel = String(curso || course).trim();
+    if (!fecha || !course || !navigator.onLine) return null;
+    if (!baseRef && !(await initFirebase())) return null;
+
+    const ref = baseRef
+      .child(rtdbKey("asistencias_alumno"))
+      .child(attendanceCourseNode(course))
+      .child(rtdbKey(fecha));
+    const handler = snapshot => {
+      const current = parseJSON(rawGetItem("asistencias"), {});
+      let changed = false;
+      const data = snapshot.val() || {};
+      Object.values(data).forEach(row => {
+        if (applyAttendanceRecordToLocal(current, row, courseLabel)) changed = true;
+      });
+      if (changed) {
+        rawSetItem("asistencias", stringify(current));
+        if (typeof onChange === "function") onChange();
+      }
+    };
+    ref.on("value", handler);
+    return () => ref.off("value", handler);
   };
 
   window.firebaseSaveAttendanceDay = async function ({ fecha, curso, alumnos, asistencias, trimestre }) {
@@ -1670,9 +1756,7 @@
       const entryKey = [fecha, course, alumno].join("|");
       const estado = asistencias?.[entryKey] || "blanco";
       const id = slug(entryKey);
-      updates[
-        [rtdbKey("asistencias_alumno"), rtdbKey(id)].join("/")
-      ] = {
+      const record = {
         key: "asistencias",
         entryKey,
         fecha,
@@ -1685,6 +1769,10 @@
         role: currentRole(),
         serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
       };
+      updates[attendanceRecordPath(course, fecha, alumno)] = record;
+      updates[
+        [rtdbKey("asistencias_alumno"), rtdbKey(id)].join("/")
+      ] = record;
     });
 
     if (trimestre) {
@@ -1729,7 +1817,7 @@
     const docenteNombre = sessionStorage.getItem("docenteNombre") || sessionStorage.getItem("usuarioNombre") || "";
     const docenteUsuario = sessionStorage.getItem("docenteUsuario") || "";
     const updates = {};
-    updates[[rtdbKey("asistencias_alumno"), rtdbKey(slug(entryKey))].join("/")] = {
+    const record = {
       key: "asistencias",
       entryKey,
       fecha,
@@ -1747,6 +1835,8 @@
       role: currentRole(),
       serverUpdatedAt: firebase.database.ServerValue.TIMESTAMP
     };
+    updates[attendanceRecordPath(course, fecha, student)] = record;
+    updates[[rtdbKey("asistencias_alumno"), rtdbKey(slug(entryKey))].join("/")] = record;
 
     if (trimestre) {
       const trimestres = parseJSON(rawGetItem("trimestresAsistencia"), {});
