@@ -1,8 +1,8 @@
 ﻿const CACHE_PREFIX = "nueva-bolivia-pwa-";
-const CACHE_NAME = "nueva-bolivia-pwa-v2.27";
+const CACHE_NAME = "nueva-bolivia-pwa-v2.32";
 
 const CORE_ASSETS = [
-  './exportar.js?v=v2.27',
+  './exportar.js?v=v2.32',
   "./",
   "./index.html",
   "./admin.html",
@@ -13,14 +13,14 @@ const CORE_ASSETS = [
   "./notas.html",
   "./alumno.html",
   "./reportes.html",
-  "./sincronizacion/firebase/firebase-core.js?v=v2.27",
-  "./sincronizacion/firebase/firebase-roles.js?v=v2.27",
-  "./sincronizacion/firebase/firebase-storage.js?v=v2.27",
-  "./sincronizacion/firebase/firebase-attendance.js?v=v2.27",
-  "./sincronizacion/firebase/firebase-notes.js?v=v2.27",
-  "./sincronizacion/firebase/firebase-stats.js?v=v2.27",
-  "./sincronizacion/firebase/firebase-sync.js?v=v2.27",
-  "./pwa.js?v=v2.27",
+  "./sincronizacion/firebase/firebase-core.js?v=v2.32",
+  "./sincronizacion/firebase/firebase-roles.js?v=v2.32",
+  "./sincronizacion/firebase/firebase-storage.js?v=v2.32",
+  "./sincronizacion/firebase/firebase-attendance.js?v=v2.32",
+  "./sincronizacion/firebase/firebase-notes.js?v=v2.32",
+  "./sincronizacion/firebase/firebase-stats.js?v=v2.32",
+  "./sincronizacion/firebase/firebase-sync.js?v=v2.32",
+  "./pwa.js?v=v2.32",
   "./manifest.json",
   "./limpiar-cache.html",
   "./images/login-fondo.png",
@@ -76,6 +76,7 @@ self.addEventListener("fetch", event => {
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
+
 
 
 
