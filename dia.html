@@ -401,10 +401,17 @@
   ];
   const CURSOS_ANTERIORES = ['Primero "A"', 'Segundo "A"', 'Tercero "A"', 'Cuarto "A"', 'Quinto "A"', 'Sexto "A"'];
   const TRIMESTRES = ["1er Trimestre", "2do Trimestre", "3er Trimestre"];
-  let cursoVistaActual = normalizarCurso(localStorage.getItem("cursoSeleccionado") || "");
-  let trimestrePanelAbierto = false;
-  let claveEscuchaAsistencia = "";
-  let detenerEscuchaAsistencia = null;
+let cursoVistaActual = normalizarCurso(
+  localStorage.getItem("cursoSeleccionado") || ""
+);
+
+let trimestrePanelAbierto = false;
+let claveEscuchaAsistencia = "";
+let detenerEscuchaAsistencia = null;
+
+// Control del guardado directo en Firebase
+let asistenciaAlumnoPendiente = null;
+let guardandoAsistenciaPendiente = false;
 
   function normalizarCurso(nombre) {
     const texto = String(nombre || "")
