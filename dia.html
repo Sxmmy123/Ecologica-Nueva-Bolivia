@@ -390,9 +390,6 @@
   anio = fechaInicial.getFullYear();
   mes = fechaInicial.getMonth() + 1;
   dia = fechaInicial.getDate();
-  const esHoy = hoy.getFullYear() === anio &&
-                hoy.getMonth() + 1 === mes &&
-                hoy.getDate() === dia;
   const CURSOS_DEFAULT = [
     "Pre Inicial - Inicial",
     "1.º de Primaria",
@@ -406,7 +403,6 @@
   const TRIMESTRES = ["1er Trimestre", "2do Trimestre", "3er Trimestre"];
   let cursoVistaActual = normalizarCurso(localStorage.getItem("cursoSeleccionado") || "");
   let trimestrePanelAbierto = false;
-  let modoEdicionAsistenciaActivo = false;
   let claveEscuchaAsistencia = "";
   let detenerEscuchaAsistencia = null;
 
@@ -450,8 +446,7 @@
         curso: pendiente.curso,
         alumno: pendiente.alumno,
         estado: pendiente.estado,
-        trimestre: pendiente.trimestre,
-        enEdicion: pendiente.enEdicion
+        trimestre: pendiente.trimestre
       });
       if (guardado) {
         asistenciaAlumnoPendiente = null;
@@ -484,24 +479,6 @@
     }
   }
 
-  function habilitarEdicionAsistencia() {
-    if (docenteSinInternet()) {
-      mostrarBloqueoAsistenciaSinInternet();
-      return;
-    }
-    const mensaje = "Se habilitara la correccion de asistencia y quedara registrada con su usuario. ?Desea continuar?";
-    if (!confirm(mensaje)) return;
-    modoEdicionAsistenciaActivo = true;
-    mostrarInformacion(true);
-  }
-
-  async function terminarEdicionAsistencia() {
-    const guardado = await confirmarAsistenciaAlumnoPendiente(false);
-    if (!guardado) return;
-    modoEdicionAsistenciaActivo = false;
-    mostrarInformacion(false);
-  }
-
   async function activarEscuchaAsistenciaTiempoReal() {
     if (!navigator.onLine || typeof window.firebaseWatchAttendanceDay !== "function") return;
     const clave = `${claveDeFecha()}|${cursoVistaActual}`;
@@ -514,7 +491,7 @@
       curso: cursoVistaActual,
       onChange: () => {
         if (asistenciaAlumnoPendiente) return;
-        mostrarInformacion(modoEdicionAsistenciaActivo, false);
+        mostrarInformacion(false);
       }
     });
   }
@@ -568,7 +545,7 @@
     actualizarClaseModoAsistencia();
     renderTrimestrePanel();
     if (modo === "resumen") mostrarAsistenciaMensual();
-    else mostrarInformacion(modoEdicionAsistenciaActivo);
+    else mostrarInformacion();
   }
 
   function etiquetaCursoCorta(curso) {
@@ -616,52 +593,8 @@
       .filter(Boolean);
   }
 
-  function docenteActualNombre() {
-    return sessionStorage.getItem("docenteNombre") || sessionStorage.getItem("docenteUsuario") || "Docente";
-  }
-
-  function docenteActualUsuario() {
-    return sessionStorage.getItem("docenteUsuario") || docenteActualNombre();
-  }
-
-  function horarioBaseParaCurso(curso) {
-    const horarioCurso = leerJSON(`horario_${curso}`, []);
-    if (Array.isArray(horarioCurso) && horarioCurso.length) return horarioCurso;
-    if (curso !== "Pre Inicial - Inicial") {
-      const horasPrimaria = leerJSON("horasPrimaria", []);
-      if (Array.isArray(horasPrimaria) && horasPrimaria.length) return horasPrimaria;
-    }
-    return curso === "Pre Inicial - Inicial"
-      ? [{ periodo:"1", hora:"08:00 - 08:40" }, { periodo:"2", hora:"08:40 - 09:20" }]
-      : [{ periodo:"1", hora:"07:30 - 08:10" }, { periodo:"2", hora:"08:10 - 08:50" }];
-  }
-
-  function minutosDesdeHora(hora) {
-    const match = String(hora || "").match(/(\d{1,2}):(\d{2})/);
-    if (!match) return null;
-    return Number(match[1]) * 60 + Number(match[2]);
-  }
-
-  function finSegundoPeriodo(curso) {
-    const periodos = horarioBaseParaCurso(curso).filter(fila =>
-      !fila.recreo && !String(fila.periodo || "").toLowerCase().includes("recreo")
-    );
-    const segundo = periodos[1] || periodos[0];
-    const partesHora = String(segundo?.hora || "").split("-");
-    return minutosDesdeHora(partesHora[1] || partesHora[0]);
-  }
-
-  function asistenciaBloqueadaPorHorario(curso) {
-    if (!esHoy) return true;
-    const fin = finSegundoPeriodo(curso);
-    if (fin === null) return false;
-    const ahora = new Date();
-    const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
-    return minutosAhora > fin;
-  }
-
-  function puedeEditarAsistencia(curso, modoEdicion) {
-    return !esVistaSoloLectura() && (modoEdicion || !asistenciaBloqueadaPorHorario(curso));
+  function puedeEditarAsistencia() {
+    return !esVistaSoloLectura();
   }
 
   function cambiarTrimestre(valor) {
@@ -678,7 +611,7 @@
     renderTrimestrePanel();
     renderModalTrimestre();
     if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
-    else mostrarInformacion(modoEdicionAsistenciaActivo);
+    else mostrarInformacion();
   }
 
   function renderTrimestrePanel() {
@@ -1098,7 +1031,7 @@
     cursoVistaActual = normalizarCurso(curso);
     localStorage.setItem("cursoSeleccionado", cursoVistaActual);
     if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
-    else mostrarInformacion(modoEdicionAsistenciaActivo);
+    else mostrarInformacion();
   }
 
   function cursosOficialesVisibles(alumnosPorCurso) {
@@ -1270,8 +1203,7 @@
     setTimeout(() => cambiarDia(delta), 400);
   }
 
-  async function mostrarInformacion(modoEdicion = false, refrescarFirebase = true) {
-    modoEdicion = Boolean(modoEdicion || modoEdicionAsistenciaActivo);
+  async function mostrarInformacion(refrescarFirebase = true) {
     actualizarClaseModoAsistencia();
     document.querySelectorAll("#slideContainer > .d-flex.justify-content-between.mb-3").forEach(el => el.style.display = "");
     const subtitulo = document.querySelector("#slideContainer h6");
@@ -1324,8 +1256,7 @@
       div.style.borderTopColor = colorCurso(curso);
 
       const listaAlumnos = nombresAlumnosCurso(curso);
-      const bloqueada = asistenciaBloqueadaPorHorario(curso);
-      const editable = puedeEditarAsistencia(curso, modoEdicion);
+      const editable = puedeEditarAsistencia();
       const totales = listaAlumnos.reduce((acc, nombre) => {
         const estado = asistencias[`${claveDeFecha()}|${curso}|${nombre}`] || "blanco";
         acc[estado] = (acc[estado] || 0) + 1;
@@ -1335,8 +1266,6 @@
 
       div.innerHTML = `
         ${diaRegistrado ? htmlTotalesAsistencia(totales) : '<div class="alert alert-info py-2 mb-2">Dia sin registro de asistencia.</div>'}
-        ${bloqueada && !modoEdicion ? '<div class="attendance-lock-note"><i class="bi bi-lock-fill"></i> Asistencia bloqueada despues del segundo periodo. Para corregir, usa Editar asistencia.</div>' : ""}
-        ${modoEdicion && bloqueada ? '<div class="attendance-lock-note"><i class="bi bi-unlock-fill"></i> Modo edicion activo. La correccion quedara registrada en la asistencia del alumno.</div>' : ""}
       `;
 
       if (listaAlumnos.length === 0) {
@@ -1385,8 +1314,7 @@
                 curso,
                 alumno: nombre,
                 estado: nuevoEstado,
-                trimestre,
-                enEdicion: bloqueada || modoEdicion
+                trimestre
               };
 
               const guardadoActual = await confirmarAsistenciaAlumnoPendiente(true);
@@ -1404,19 +1332,6 @@
       detalleContainer.appendChild(div);
     });
 
-    if (!esVistaSoloLectura() && modoEdicion) {
-      const btnTerminar = document.createElement("button");
-      btnTerminar.className = "btn btn-sm btn-success mt-3 me-2";
-      btnTerminar.innerHTML = '<i class="bi bi-check2-circle"></i> Terminar edicion';
-      btnTerminar.onclick = terminarEdicionAsistencia;
-      detalleContainer.appendChild(btnTerminar);
-    } else if (!esVistaSoloLectura() && (!esHoy || asistenciaBloqueadaPorHorario(cursoVistaActual))) {
-      const btnEditar = document.createElement("button");
-      btnEditar.className = "btn btn-sm btn-warning mt-3";
-      btnEditar.innerHTML = '<i class="bi bi-pencil-square"></i> Editar asistencia';
-      btnEditar.onclick = habilitarEdicionAsistencia;
-      detalleContainer.appendChild(btnEditar);
-    }
   }
 
   function obtenerSiguienteEstado(estadoActual) {
@@ -1432,7 +1347,6 @@
   window.addEventListener("pagehide", () => {
     if (typeof detenerEscuchaAsistencia === "function") detenerEscuchaAsistencia();
     if (asistenciaAlumnoPendiente) {
-      asistenciaAlumnoPendiente.enEdicion = false;
       confirmarAsistenciaAlumnoPendiente(true).catch(() => {});
     }
   });
@@ -1442,7 +1356,7 @@
     renderNavbar();
     renderTrimestrePanel();
     if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
-    else mostrarInformacion(modoEdicionAsistenciaActivo);
+    else mostrarInformacion();
   };
 
 
@@ -1450,7 +1364,7 @@
   renderNavbar();
   renderTrimestrePanel();
   if (esVistaSoloLectura() || esModoResumenDocente()) mostrarAsistenciaMensual();
-  else mostrarInformacion(modoEdicionAsistenciaActivo);
+  else mostrarInformacion();
   window.addEventListener("offline", () => {
     if (esDocente() && !esModoResumenDocente()) mostrarBloqueoAsistenciaSinInternet();
   });
@@ -1459,7 +1373,7 @@
     if (overlay) overlay.remove();
     if (esDocente()) {
       if (esModoResumenDocente()) mostrarAsistenciaMensual();
-      else mostrarInformacion(modoEdicionAsistenciaActivo);
+      else mostrarInformacion();
     }
   });
 </script>

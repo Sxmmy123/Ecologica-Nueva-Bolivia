@@ -1800,7 +1800,7 @@
     return true;
   };
 
-  window.firebaseSaveAttendanceStudent = async function ({ fecha, curso, alumno, estado, trimestre, enEdicion = false }) {
+  window.firebaseSaveAttendanceStudent = async function ({ fecha, curso, alumno, estado, trimestre }) {
     const course = normalizeCourseName(curso || "general");
     const student = String(alumno || "").trim();
     const state = estado || "blanco";
@@ -1826,9 +1826,6 @@
       value: state,
       registradoPor: docenteNombre,
       registradoUsuario: docenteUsuario,
-      editadoPor: enEdicion ? docenteNombre : "",
-      editadoUsuario: enEdicion ? docenteUsuario : "",
-      editadoEn: enEdicion ? updatedAt : 0,
       operation: "set",
       updatedAt,
       deviceId: deviceId(),
